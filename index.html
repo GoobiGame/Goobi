@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta charset="UTF-8">
+  <title>Telegram Minigame</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Start Screen overlay sized to the game canvas (400x700) and centered */
+    #startScreen {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 400px;
+      height: 740px; /* changed from 600px to 700px */
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      z-index: 1000;
+      display: none; /* will be set to flex if needed */
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    /* Video sized exactly to 400x700 and positioned behind the overlay content */
+    #startScreen video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 400px;
+      height: 740px; /* changed from 600px to 700px */
+      object-fit: cover;
+      z-index: 0;
+    }
+    /* Start button styling; no extra heading text */
+    #startContent {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+    #startContent button {
+      padding: 10px 20px;
+      font-size: 1.2em;
+    }
+    
+    /* Game Over overlay (changed height from 600px to 700px) */
+    #gameOverScreen {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 400px;
+      height: 740px; /* changed from 600px to 700px */
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      display: none;
+      overflow: hidden;
+      z-index: 1000;
+    }
+    #gameOverScreen video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 400px;
+      height: 740px; /* changed from 600px to 700px */
+      object-fit: cover;
+      z-index: 0;
+    }
+    #gameOverScreen h1,
+    #gameOverScreen button {
+      position: relative;
+      z-index: 1;
+    }
+    #gameOverScreen h1 {
+      font-size: 3em;
+      margin-bottom: 20px;
+    }
+    #gameOverScreen button {
+      padding: 10px 20px;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <!-- Game wrapper for header, canvas, and controls -->
+  <div id="gameWrapper">
+      <div id="header">
+          <div id="scoreDisplay">Score: 0</div>
+          <div id="highScoreDisplay">High Score: 0</div>
+      </div>
+      <!-- Canvas: note the width/height attributes below -->
+      <canvas id="gameCanvas" width="400" height="600"></canvas>
+      <!-- Touch controls arranged in two groups -->
+      <div id="touchControls">
+          <div id="moveControls">
+              <button id="leftBtn">Left</button>
+              <button id="rightBtn">Right</button>
+          </div>
+          <div id="jumpControl">
+              <button id="jumpBtn">Jump</button>
+          </div>
+      </div>
+  </div>
+
+  <!-- Start Screen overlay -->
+  <div id="startScreen">
+      <video id="startVideo" loop muted playsinline>
+          <source src="assets/start.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+      </video>
+      <div id="startContent">
+          <button id="startButton">Start</button>
+      </div>
+  </div>
+
+  <!-- Game Over Screen overlay -->
+  <div id="gameOverScreen">
+      <video id="gameOverVideo" loop muted playsinline>
+          <source src="assets/gameOver.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+      </video>
+      <h1 id="gameOverMessage">Game Over</h1>
+      <button id="gameOverOkButton">OK</button>
+  </div>
+
+  <!-- Load the main JavaScript module statically -->
+  <script type="module" src="main.js"></script>
+</body>
+</html>
