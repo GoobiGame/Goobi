@@ -1,4 +1,4 @@
-// Import the startGame function at the top level
+// main.js
 import { startGame } from './game.js';
 
 // Wait for the DOM to be fully loaded before initializing the game
@@ -30,6 +30,18 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener("contextmenu", (e) => {
     e.preventDefault();
   });
+
+  // === NEW: Prevent double-tap zoom ===
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", (e) => {
+    const now = Date.now();
+    // If a second tap comes within 300ms of the last one, prevent default
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+  // === END NEW CODE ===
 
   // --- New start screen logic added below ---
   // If the session flag indicates we should skip the start screen (e.g., after a game-over restart), start immediately.
