@@ -1,22 +1,39 @@
+// audioManager.js
 export class AudioManager {
   constructor(src) {
     // Create an HTMLAudioElement
     this.audio = new Audio(src);
     this.audio.loop = true;
-    // Set the default volume to 1 (100%)
-    this.audio.volume = 1;
+
+    // By default, let's start unmuted
+    this.audio.muted = false;
+    this.isCurrentlyMuted = false;
   }
 
   play() {
+    // Attempt to play the audio
     return this.audio.play();
   }
 
-  setVolume(normalizedVolume) {
-    // Set the volume directly (expects a value between 0 and 1)
-    this.audio.volume = normalizedVolume;
+  mute() {
+    this.audio.muted = true;
+    this.isCurrentlyMuted = true;
   }
 
-  getVolume() {
-    return this.audio.volume;
+  unmute() {
+    this.audio.muted = false;
+    this.isCurrentlyMuted = false;
+  }
+
+  toggleMute() {
+    if (this.isCurrentlyMuted) {
+      this.unmute();
+    } else {
+      this.mute();
+    }
+  }
+
+  isMuted() {
+    return this.isCurrentlyMuted;
   }
 }
