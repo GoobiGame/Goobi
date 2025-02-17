@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // **Remove focus** so the Space bar won't re-click the button
     muteButton.blur();
   });
-  
+
   // 4) Basic iOS/Android pinch-zoom prevention, context menu disable, etc.
   const canvas = document.getElementById("gameCanvas");
   if (canvas) {
@@ -38,11 +38,15 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener("gesturestart", (e) => e.preventDefault());
   document.addEventListener("contextmenu", (e) => e.preventDefault());
   let lastTouchEnd = 0;
-  document.addEventListener("touchend", (e) => {
-    const now = Date.now();
-    if (now - lastTouchEnd <= 300) e.preventDefault();
-    lastTouchEnd = now;
-  }, { passive: false });
+
+document.addEventListener("touchend", (e) => {
+  const now = Date.now();
+  // If a second tap occurs within 300ms of the last one, prevent the default zoom behavior
+  if (now - lastTouchEnd <= 300) {
+    e.preventDefault();
+  }
+  lastTouchEnd = now;
+}, { passive: false });
 
   // 5) Start Screen Logic
   if (sessionStorage.getItem("skipStartScreen") === "true") {
