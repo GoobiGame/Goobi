@@ -65,7 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const startVideo = document.getElementById("startVideo");
     const startButton = document.getElementById("startButton");
     startScreen.style.display = "flex";
-    startVideo.play();
+
+    // Attempt to play the start screen video
+    if (startVideo) {
+      startVideo.play().catch(err => console.log("startVideo play error:", err));
+    }
 
     startButton.addEventListener("click", () => {
       sessionStorage.setItem("skipStartScreen", "true");

@@ -1,3 +1,4 @@
+// game.js
 import { Player } from './player.js';
 import { Platform, generatePlatforms } from './platform.js';
 import { setupControls } from './controls.js';
@@ -29,7 +30,6 @@ tileImg.onload = () => {
 
   // Scale the pattern by 0.5 (half size)
   if (tilePattern && tilePattern.setTransform) {
-    // DOMMatrix is standard in modern browsers
     const scaleMatrix = new DOMMatrix().scale(0.5, 0.5);
     tilePattern.setTransform(scaleMatrix);
   }
@@ -78,12 +78,10 @@ export function startGame(telegramData = {}) {
   // Show the player's Telegram username & current score
   scoreDisplay.innerText = `@${playerUsername} Score: 0`;
 
-  // === (Optional) Replace local High Score with chat's Top Scorer ===
-  // If you'd rather keep your local high score, comment out this block
+  // Fetch the top scorer from Telegram for this chat (instead of local high score)
   fetchChatTopScorer();
 
   async function fetchChatTopScorer() {
-    // Get the top scorer from Telegram for this chat
     const scores = await ScoreManager.getChatHighScores(userId, chatId, messageId);
     if (scores.length > 0) {
       const topScorer = scores[0]; // highest score is first
