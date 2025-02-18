@@ -36,7 +36,8 @@ tileImg.onload = () => {
 };
 
 // === 2) START GAME FUNCTION ===============================================
-export function startGame() {
+// Accept an optional object "telegramData" with { userId, username, chatId, messageId }.
+export function startGame(telegramData = {}) {
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
 
@@ -46,6 +47,10 @@ export function startGame() {
   let score = 0;
   let cameraY = 0;
   let highestWorldY = 0;
+
+  // Extract user info (fallback to 'Player' if no username)
+  const playerUsername = telegramData.username || 'Player';
+  const { userId, chatId, messageId } = telegramData;
 
   // Create the player
   const player = new Player(canvas);
@@ -66,16 +71,31 @@ export function startGame() {
     return Math.random() * (max - min) + min;
   }
 
-  // Score / High Score
-  let highScore = ScoreManager.getHighScore();
+  // DOM elements for score displays
   const scoreDisplay = document.getElementById("scoreDisplay");
-  scoreDisplay.innerText = `Score: ${score}`;
-  document.getElementById("highScoreDisplay").innerText = `High Score: ${highScore}`;
+  const highScoreDisplay = document.getElementById("highScoreDisplay");
+
+  // Show the player's Telegram username & current score
+  scoreDisplay.innerText = `@${playerUsername} Score: 0`;
+
+  // === (Optional) Replace local High Score with chat's Top Scorer ===
+  // If you'd rather keep your local high score, comment out this block
+  fetchChatTopScorer();
+
+  async function fetchChatTopScorer() {
+    // Get the top scorer from Telegram for this chat
+    const scores = await ScoreManager.getChatHighScores(userId, chatId, messageId);
+    if (scores.length > 0) {
+      const topScorer = scores[0]; // highest score is first
+      highScoreDisplay.innerText = `Top: @${topScorer.username} - ${topScorer.score}`;
+    } else {
+      highScoreDisplay.innerText = "No scores yet";
+    }
+  }
 
   // === Game Over overlay ===============================================
   const gameOverScreen = document.getElementById("gameOverScreen");
   const gameOverOkButton = document.getElementById("gameOverOkButton");
-  // Get the video element for game over background
   const gameOverVideo = document.getElementById("gameOverVideo");
 
   // Remove any previous event listener to avoid duplicates
@@ -87,7 +107,7 @@ export function startGame() {
     gameOverVideo.currentTime = 0;
     gameOverScreen.style.display = "none";
     // Restart the game without reloading the page
-    startGame();
+    startGame(telegramData); // Pass telegramData again so we keep user info
   });
 
   let lastScore = 0;
@@ -104,9 +124,7 @@ export function startGame() {
 
     // If tilePattern is ready, fill the screen with a scrolling pattern
     if (tilePattern) {
-      // Compute how much to shift the pattern upward
       const offset = (cameraY * PARALLAX_FACTOR) % SCALED_TILE_SIZE;
-
       ctx.save();
       ctx.translate(0, -offset);
       ctx.fillStyle = tilePattern;
@@ -137,14 +155,9 @@ export function startGame() {
     score = Math.floor(highestWorldY);
 
     if (score !== lastScore) {
-      scoreDisplay.innerText = `Score: ${score}`;
+      // Update the DOM text to show the player's username & new score
+      scoreDisplay.innerText = `@${playerUsername} Score: ${score}`;
       lastScore = score;
-    }
-
-    if (score > highScore) {
-      highScore = score;
-      localStorage.setItem("highScore", highScore);
-      document.getElementById("highScoreDisplay").innerText = `High Score: ${highScore}`;
     }
 
     // 3E) Remove off-screen platforms
@@ -194,25 +207,17 @@ export function startGame() {
     obstacles = obstacles.filter(obstacle => obstacle.y < canvas.height + obstacle.height);
     obstacles.forEach(obstacle => obstacle.draw(ctx));
 
-    // 3K) Collision check with obstacles
+    // 3K) Collision check with obstacles (Game Over scenario)
     for (let obstacle of obstacles) {
       if (obstacle.collidesWith(player)) {
-        if (gameOverScreen.style.display !== "flex") {
-          gameOverVideo.currentTime = 0;
-          gameOverVideo.play();
-        }
-        gameOverScreen.style.display = "flex";
+        handleGameOver();
         return;
       }
     }
 
-    // 3L) Check if player falls off the canvas
+    // 3L) Check if player falls off the canvas (Game Over scenario)
     if (player.y > canvas.height) {
-      if (gameOverScreen.style.display !== "flex") {
-        gameOverVideo.currentTime = 0;
-        gameOverVideo.play();
-      }
-      gameOverScreen.style.display = "flex";
+      handleGameOver();
       return;
     }
 
@@ -222,4 +227,44 @@ export function startGame() {
 
   // === 4) START THE LOOP ================================================
   requestAnimationFrame(gameLoop);
+
+  // === GAME OVER LOGIC ===
+  function handleGameOver() {
+    // 1. Send final score to Telegram scoreboard
+    ScoreManager.setTelegramScore(score, userId, chatId, messageId);
+
+    // 2. Show Game Over overlay
+    if (gameOverScreen.style.display !== "flex") {
+      gameOverVideo.currentTime = 0;
+      gameOverVideo.play();
+    }
+    gameOverScreen.style.display = "flex";
+  }
+
+  // === (Optional) TROPHY BUTTON / LEADERBOARD ===
+  const trophyButton = document.getElementById("trophyButton");
+  const leaderboardOverlay = document.getElementById("leaderboardOverlay");
+  const leaderboardList = document.getElementById("leaderboardList");
+  const closeLeaderboard = document.getElementById("closeLeaderboard");
+
+  if (trophyButton) {
+    trophyButton.addEventListener("click", async () => {
+      const scores = await ScoreManager.getChatHighScores(userId, chatId, messageId);
+      leaderboardList.innerHTML = "";
+      if (scores.length === 0) {
+        leaderboardList.innerHTML = "<p>No scores yet.</p>";
+      } else {
+        scores.slice(0, 5).forEach((entry, index) => {
+          const p = document.createElement("p");
+          p.textContent = `${index + 1}. @${entry.username} - ${entry.score}`;
+          leaderboardList.appendChild(p);
+        });
+      }
+      leaderboardOverlay.style.display = "block";
+    });
+
+    closeLeaderboard?.addEventListener("click", () => {
+      leaderboardOverlay.style.display = "none";
+    });
+  }
 }

@@ -10,21 +10,44 @@
   <style>
     /* Header */
     #header {
+      position: relative; /* We can absolutely position elements inside */
       width: 100%;
       height: 70px;
       background-color: black;
       color: white;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 10px;
     }
-    /* High Score + Mute Button */
+
+    /* Left: Score Display */
+    #scoreDisplay {
+      position: absolute;
+      top: 50%;
+      left: 10px;
+      transform: translateY(-50%);
+      font-size: 1em;
+    }
+
+    /* Center: Trophy Button */
+    #trophyButton {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      font-size: 1.5em; /* Make the emoji a bit larger */
+    }
+
+    /* Right: High Score + Mute Button */
     #soundControl {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 5px;
+    }
+    #highScoreDisplay {
+      margin-bottom: 5px; /* small spacing above the mute button */
     }
     #muteButton {
       padding: 6px 10px;
@@ -114,16 +137,53 @@
       display: inline-block;
       cursor: pointer;
     }
+
+    /* Leaderboard Overlay (for the trophy) */
+    #leaderboardOverlay {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 300px;
+      height: 400px;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      overflow: auto;
+      z-index: 2000;
+      padding: 20px;
+    }
+    #leaderboardOverlay h2 {
+      margin-top: 0;
+    }
+    #leaderboardList p {
+      margin: 0.5em 0;
+    }
+    #closeLeaderboard {
+      margin-top: 10px;
+      padding: 6px 10px;
+      font-size: 1rem;
+      background-color: #444;
+      color: greenyellow;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <!-- Game Wrapper -->
   <div id="gameWrapper">
     <div id="header">
+      <!-- Left: Score Display (username + current score) -->
       <div id="scoreDisplay">Score: 0</div>
+
+      <!-- Center: Trophy Emoji -->
+      <div id="trophyButton">🏆</div>
+
+      <!-- Right: High Score + Mute Button -->
       <div id="soundControl">
         <div id="highScoreDisplay">High Score: 0</div>
-        <!-- Mute/Unmute Button -->
         <button id="muteButton">Sound ON</button>
       </div>
     </div>
@@ -161,6 +221,27 @@
     <h1 id="gameOverMessage">Game Over</h1>
     <button id="gameOverOkButton">OK</button>
   </div>
+
+  <!-- Leaderboard Overlay -->
+  <div id="leaderboardOverlay">
+    <h2>Leaderboard</h2>
+    <div id="leaderboardList"></div>
+    <button id="closeLeaderboard">Close</button>
+  </div>
+
+  <!-- 
+    This script block parses Telegram parameters from the URL.
+    For example, Telegram might call your game with:
+    ?user_id=12345&username=Alice&chat_id=-100123&message_id=45
+    We'll store them in global variables for easy access in main.js.
+  -->
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    window.TELEGRAM_USER_ID = urlParams.get('user_id') || null;
+    window.TELEGRAM_USERNAME = urlParams.get('username') || 'Player';
+    window.TELEGRAM_CHAT_ID = urlParams.get('chat_id') || null;
+    window.TELEGRAM_MESSAGE_ID = urlParams.get('message_id') || null;
+  </script>
 
   <script type="module" src="main.js"></script>
 </body>

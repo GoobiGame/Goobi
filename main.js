@@ -38,19 +38,28 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener("gesturestart", (e) => e.preventDefault());
   document.addEventListener("contextmenu", (e) => e.preventDefault());
   let lastTouchEnd = 0;
+  document.addEventListener("touchend", (e) => {
+    const now = Date.now();
+    // If a second tap occurs within 300ms of the last one, prevent the default zoom behavior
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
 
-document.addEventListener("touchend", (e) => {
-  const now = Date.now();
-  // If a second tap occurs within 300ms of the last one, prevent the default zoom behavior
-  if (now - lastTouchEnd <= 300) {
-    e.preventDefault();
-  }
-  lastTouchEnd = now;
-}, { passive: false });
+  // 5) Gather Telegram parameters from index.html (global vars)
+  const telegramData = {
+    userId: window.TELEGRAM_USER_ID,
+    username: window.TELEGRAM_USERNAME,
+    chatId: window.TELEGRAM_CHAT_ID,
+    messageId: window.TELEGRAM_MESSAGE_ID
+  };
+  console.log("Telegram Data:", telegramData);
 
-  // 5) Start Screen Logic
+  // 6) Start Screen Logic
   if (sessionStorage.getItem("skipStartScreen") === "true") {
-    startGame();
+    // If we've already seen the start screen, jump straight to the game
+    startGame(telegramData);
   } else {
     const startScreen = document.getElementById("startScreen");
     const startVideo = document.getElementById("startVideo");
@@ -63,7 +72,9 @@ document.addEventListener("touchend", (e) => {
       startScreen.style.display = "none";
       // In case autoplay was blocked, try again after user interaction
       audioManager.play().catch((err) => console.log('User start -> still blocked?', err));
-      startGame();
+
+      // Pass Telegram data to your game
+      startGame(telegramData);
     });
   }
 });
