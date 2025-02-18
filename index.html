@@ -169,6 +169,18 @@
       border-radius: 4px;
       cursor: pointer;
     }
+
+    /* Debug Div */
+    #debugDiv {
+      position: fixed;
+      top: 80px;
+      left: 10px;
+      z-index: 9999;
+      color: red;
+      background: black;
+      padding: 5px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -229,6 +241,9 @@
     <button id="closeLeaderboard">Close</button>
   </div>
 
+  <!-- Debug Div to show URL search params -->
+  <div id="debugDiv"></div>
+
   <!-- 
     This script block parses Telegram parameters from the URL.
     For example, Telegram might call your game with:
@@ -241,6 +256,10 @@
     window.TELEGRAM_USERNAME = urlParams.get('username') || 'Player';
     window.TELEGRAM_CHAT_ID = urlParams.get('chat_id') || null;
     window.TELEGRAM_MESSAGE_ID = urlParams.get('message_id') || null;
+
+    // Show the actual query string in the debug div
+    const debugDiv = document.getElementById("debugDiv");
+    debugDiv.innerText = "URL Search Params: " + window.location.search;
   </script>
 
   <script type="module" src="main.js"></script>
