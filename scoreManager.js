@@ -1,7 +1,7 @@
 // scoreManager.js
 
 // Replace this with your actual Apps Script deployment URL:
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxq_cdiG4f-d0jz52X2h2qnPVTHi5AY5AaWOAqdd-ZYwY6TClP9YouEQ8ruvgOY60MKzg/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyx711WE6V1px9EP038NJt9yXrgw66ZL8uORfr_zQsS18XuEHj8uv4cSAffNTST3cxweg/exec";
 
 export const ScoreManager = {
   // 1) Existing Local Storage Methods
