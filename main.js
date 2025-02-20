@@ -35,26 +35,37 @@ document.addEventListener('DOMContentLoaded', () => {
     lastTouchEnd = now;
   }, { passive: false });
 
-  // 3) Parse URL params for username
-  const urlParams = new URLSearchParams(window.location.search);
-  const username = urlParams.get('username') || 'Player';
+  // 3) Determine final username and possibly avatar
+  let finalUsername = "Player"; // default if nothing else found
 
-  // 4) Check if inside Telegram WebApp, set user avatar if available
+  // Check if we're inside Telegram WebApp
   if (window.Telegram && Telegram.WebApp) {
     // Expand the web app if you want
     Telegram.WebApp.expand();
     const user = Telegram.WebApp.initDataUnsafe.user;
-    if (user && user.photo_url) {
-      const avatarImg = document.getElementById("userAvatar");
-      avatarImg.src = user.photo_url;
+    if (user) {
+      // If user has a public username, use it; else fallback to first_name or "Player"
+      finalUsername = user.username || user.first_name || "Player";
+
+      // If user has a profile photo, set the avatar
+      if (user.photo_url) {
+        const avatarImg = document.getElementById("userAvatar");
+        if (avatarImg) {
+          avatarImg.src = user.photo_url;
+        }
+      }
     }
+  } else {
+    // If not inside Telegram, fallback to URL param ?username=...
+    const urlParams = new URLSearchParams(window.location.search);
+    finalUsername = urlParams.get('username') || "Player";
   }
 
-  // 5) Build the telegramData object
-  const telegramData = { username };
+  // 4) Build the telegramData object
+  const telegramData = { username: finalUsername };
   console.log("Telegram Data:", telegramData);
 
-  // 6) Start Screen Logic
+  // 5) Start Screen Logic
   if (sessionStorage.getItem("skipStartScreen") === "true") {
     startGame(telegramData);
   } else {
