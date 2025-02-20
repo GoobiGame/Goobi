@@ -2,7 +2,6 @@
 import { Player } from './player.js';
 import { Platform, generatePlatforms } from './platform.js';
 import { setupControls } from './controls.js';
-import { ScoreManager } from './scoreManager.js';
 import { getRandomInt } from './utils.js';
 import { Obstacle } from './obstacle.js';
 
@@ -10,25 +9,15 @@ import { Obstacle } from './obstacle.js';
 const tileImg = new Image();
 tileImg.src = "assets/backgroundTile.svg";
 
-// We'll store the pattern globally once it's created
 let tilePattern = null;
-
-// Because the original SVG is 100×100, scaling by 0.5 → 50×50
-// We'll need this numeric tile size to do modulo math
-const SCALED_TILE_SIZE = 50;
-
-// If you want parallax, set a factor < 1. If you want a static background, use 0.
+const SCALED_TILE_SIZE = 50; // SVG is 100×100, scaled to 50×50
 const PARALLAX_FACTOR = 0.3;
 
 tileImg.onload = () => {
-  // Create a temporary canvas/context just to create the pattern
   const tempCanvas = document.createElement("canvas");
   const tempCtx = tempCanvas.getContext("2d");
-
-  // Create the repeating pattern
   tilePattern = tempCtx.createPattern(tileImg, 'repeat');
 
-  // Scale the pattern by 0.5 (half size)
   if (tilePattern && tilePattern.setTransform) {
     const scaleMatrix = new DOMMatrix().scale(0.5, 0.5);
     tilePattern.setTransform(scaleMatrix);
@@ -36,7 +25,7 @@ tileImg.onload = () => {
 };
 
 // === 2) START GAME FUNCTION ===============================================
-// Accept an object "telegramData" with { userId, username, inlineMessageId }.
+// Accept an object "telegramData" with { username } only now.
 export function startGame(telegramData = {}) {
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
@@ -48,9 +37,8 @@ export function startGame(telegramData = {}) {
   let cameraY = 0;
   let highestWorldY = 0;
 
-  // Extract user info (fallback to 'Player' if no username)
+  // Extract user info (fallback to 'Player')
   const playerUsername = telegramData.username || 'Player';
-  const { userId, inlineMessageId } = telegramData;
 
   // Create the player
   const player = new Player(canvas);
@@ -71,25 +59,16 @@ export function startGame(telegramData = {}) {
     return Math.random() * (max - min) + min;
   }
 
-  // DOM elements for score displays
+  // === DOM Elements for Score & High Score ===
   const scoreDisplay = document.getElementById("scoreDisplay");
   const highScoreDisplay = document.getElementById("highScoreDisplay");
 
-  // Show the player's Telegram username & current score
+  // 1) Show the player's username
   scoreDisplay.innerText = `@${playerUsername} Score: 0`;
 
-  // Fetch the top scorer from Telegram for this inline message
-  fetchInlineTopScorer();
-
-  async function fetchInlineTopScorer() {
-    const scores = await ScoreManager.getInlineHighScores(userId, inlineMessageId);
-    if (scores.length > 0) {
-      const topScorer = scores[0]; // highest score is first
-      highScoreDisplay.innerText = `Top: @${topScorer.username} - ${topScorer.score}`;
-    } else {
-      highScoreDisplay.innerText = "No scores yet";
-    }
-  }
+  // 2) Load the local high score from localStorage
+  let localHighScore = parseInt(localStorage.getItem("localHighScore")) || 0;
+  highScoreDisplay.innerText = `High: ${localHighScore}`;
 
   // === Game Over overlay ===============================================
   const gameOverScreen = document.getElementById("gameOverScreen");
@@ -105,7 +84,7 @@ export function startGame(telegramData = {}) {
     gameOverVideo.currentTime = 0;
     gameOverScreen.style.display = "none";
     // Restart the game without reloading the page
-    startGame(telegramData); // Pass telegramData again so we keep user info
+    startGame({ username: playerUsername });
   });
 
   let lastScore = 0;
@@ -155,6 +134,13 @@ export function startGame(telegramData = {}) {
     if (score !== lastScore) {
       scoreDisplay.innerText = `@${playerUsername} Score: ${score}`;
       lastScore = score;
+
+      // Update local high score if needed
+      if (score > localHighScore) {
+        localHighScore = score;
+        localStorage.setItem("localHighScore", localHighScore);
+        highScoreDisplay.innerText = `High: ${localHighScore}`;
+      }
     }
 
     // 3E) Remove off-screen platforms
@@ -227,8 +213,7 @@ export function startGame(telegramData = {}) {
 
   // === GAME OVER LOGIC ===
   function handleGameOver() {
-    // 1. Send final score to Telegram scoreboard (INLINE)
-    ScoreManager.setTelegramScoreInline(score, userId, inlineMessageId);
+    // 1. We do NOT send any Telegram score. Just local logic.
 
     // 2. Show Game Over overlay
     if (gameOverScreen.style.display !== "flex") {
@@ -236,33 +221,5 @@ export function startGame(telegramData = {}) {
       gameOverVideo.play();
     }
     gameOverScreen.style.display = "flex";
-  }
-
-  // === (Optional) TROPHY BUTTON / LEADERBOARD ===
-  const trophyButton = document.getElementById("trophyButton");
-  const leaderboardOverlay = document.getElementById("leaderboardOverlay");
-  const leaderboardList = document.getElementById("leaderboardList");
-  const closeLeaderboard = document.getElementById("closeLeaderboard");
-
-  if (trophyButton) {
-    trophyButton.addEventListener("click", async () => {
-      // getInlineHighScores instead of getChatHighScores
-      const scores = await ScoreManager.getInlineHighScores(userId, inlineMessageId);
-      leaderboardList.innerHTML = "";
-      if (scores.length === 0) {
-        leaderboardList.innerHTML = "<p>No scores yet.</p>";
-      } else {
-        scores.slice(0, 5).forEach((entry, index) => {
-          const p = document.createElement("p");
-          p.textContent = `${index + 1}. @${entry.username} - ${entry.score}`;
-          leaderboardList.appendChild(p);
-        });
-      }
-      leaderboardOverlay.style.display = "block";
-    });
-
-    closeLeaderboard?.addEventListener("click", () => {
-      leaderboardOverlay.style.display = "none";
-    });
   }
 }

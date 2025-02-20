@@ -3,7 +3,7 @@ import { startGame } from './game.js';
 import { AudioManager } from './audioManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1) Audio setup (same as before)
+  // 1) Audio setup
   const audioManager = new AudioManager('assets/themeMusic.wav');
   audioManager.play().catch((err) => {
     console.log('Autoplay was blocked:', err);
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     muteButton.blur();
   });
 
-  // 2) Prevent pinch-zoom, context menu, etc. (same as before)
+  // 2) Prevent pinch-zoom, context menu, etc.
   const canvas = document.getElementById("gameCanvas");
   if (canvas) {
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -35,18 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
     lastTouchEnd = now;
   }, { passive: false });
 
-  // 3) Parse URL params for inline_message_id and user_id
+  // 3) Parse username from URL (fallback to "Player")
+  //    We remove inlineMessageId, userId, etc.
   const urlParams = new URLSearchParams(window.location.search);
-  const inlineMessageId = urlParams.get('inline_message_id');
-  const userId = urlParams.get('user_id');
   const username = urlParams.get('username') || 'Player';
 
-  // 4) Build the telegramData object
-  const telegramData = {
-    userId: userId,
-    username: username,
-    inlineMessageId: inlineMessageId
-  };
+  // 4) Build the data object with just the username
+  const telegramData = { username };
   console.log("Telegram Data:", telegramData);
 
   // 5) Start Screen Logic
