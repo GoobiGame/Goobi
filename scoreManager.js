@@ -4,7 +4,7 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyx711WE6V1px9EP038NJt9yXrgw66ZL8uORfr_zQsS18XuEHj8uv4cSAffNTST3cxweg/exec";
 
 export const ScoreManager = {
-  // 1) Existing Local Storage Methods
+  // 1) Existing Local Storage Methods (unchanged)
   getHighScore() {
     return parseInt(localStorage.getItem("highScore")) || 0;
   },
@@ -17,16 +17,18 @@ export const ScoreManager = {
     }
   },
 
-  // 2) New Telegram Score Methods
+  // 2) New Telegram Score Methods (Inline-based)
+
   /**
-   * setTelegramScore:
-   *   Sends the player's final score to Telegram's scoreboard for the current chat/message.
-   *   If userId, chatId, or messageId is missing, it just skips.
+   * setTelegramScoreInline:
+   *   Sends the player's final score to Telegram's scoreboard
+   *   using inline_message_id (NOT chat_id/message_id).
+   *
+   *   If userId or inlineMessageId is missing, it just skips.
    */
-  async setTelegramScore(score, userId, chatId, messageId) {
-    // If we don't have the required data, do nothing
-    if (!userId || !chatId || !messageId) {
-      console.warn("Skipping setTelegramScore: missing userId/chatId/messageId.");
+  async setTelegramScoreInline(score, userId, inlineMessageId) {
+    if (!userId || !inlineMessageId) {
+      console.warn("Skipping setTelegramScoreInline: missing userId or inlineMessageId.");
       return;
     }
 
@@ -37,27 +39,26 @@ export const ScoreManager = {
         body: JSON.stringify({
           action: "setScore",
           user_id: userId,
-          chat_id: chatId,
-          message_id: messageId,
+          inline_message_id: inlineMessageId,
           score: score
         })
       });
       const result = await response.json();
-      console.log("setTelegramScore result:", result);
+      console.log("setTelegramScoreInline result:", result);
       // Expected: { ok: true, result: { ... } } or an error
     } catch (err) {
-      console.error("Error in setTelegramScore:", err);
+      console.error("Error in setTelegramScoreInline:", err);
     }
   },
 
   /**
-   * getChatHighScores:
-   *   Fetches the scoreboard for the current chat/message from Telegram.
-   *   Returns an array of objects: [{ username, score }, ...]
+   * getInlineHighScores:
+   *   Fetches the scoreboard for the current inline_message_id from Telegram.
+   *   Returns an array of objects: [{ username, score, position }, ...]
    */
-  async getChatHighScores(userId, chatId, messageId) {
-    if (!chatId || !messageId) {
-      console.warn("Skipping getChatHighScores: missing chatId/messageId.");
+  async getInlineHighScores(userId, inlineMessageId) {
+    if (!inlineMessageId) {
+      console.warn("Skipping getInlineHighScores: missing inlineMessageId.");
       return [];
     }
 
@@ -66,23 +67,22 @@ export const ScoreManager = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "getChatHighScores",
+          action: "getInlineHighScores",
           user_id: userId, // Telegram requires a user_id param
-          chat_id: chatId,
-          message_id: messageId
+          inline_message_id: inlineMessageId
         })
       });
       const json = await response.json();
 
       if (json.ok) {
-        // json.scores should be an array of { username, score }
+        // json.scores should be an array of { username, score, position }
         return json.scores || [];
       } else {
-        console.error("getChatHighScores returned error:", json);
+        console.error("getInlineHighScores returned error:", json);
         return [];
       }
     } catch (err) {
-      console.error("Error in getChatHighScores:", err);
+      console.error("Error in getInlineHighScores:", err);
       return [];
     }
   }

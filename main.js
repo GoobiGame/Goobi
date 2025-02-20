@@ -3,31 +3,20 @@ import { startGame } from './game.js';
 import { AudioManager } from './audioManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1) Create our AudioManager, which starts unmuted
+  // 1) Audio setup (same as before)
   const audioManager = new AudioManager('assets/themeMusic.wav');
-
-  // 2) Attempt to play the music immediately (autoplay might block)
   audioManager.play().catch((err) => {
     console.log('Autoplay was blocked:', err);
   });
-
-  // 3) Mute/Unmute button
+  
   const muteButton = document.getElementById('muteButton');
   muteButton.addEventListener('click', () => {
     audioManager.toggleMute();
-  
-    // Update button text
-    if (audioManager.isMuted()) {
-      muteButton.textContent = 'Sound OFF';
-    } else {
-      muteButton.textContent = 'Sound ON';
-    }
-  
-    // **Remove focus** so the Space bar won't re-click the button
+    muteButton.textContent = audioManager.isMuted() ? 'Sound OFF' : 'Sound ON';
     muteButton.blur();
   });
 
-  // 4) Basic iOS/Android pinch-zoom prevention, context menu disable, etc.
+  // 2) Prevent pinch-zoom, context menu, etc. (same as before)
   const canvas = document.getElementById("gameCanvas");
   if (canvas) {
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -40,25 +29,28 @@ document.addEventListener('DOMContentLoaded', () => {
   let lastTouchEnd = 0;
   document.addEventListener("touchend", (e) => {
     const now = Date.now();
-    // If a second tap occurs within 300ms of the last one, prevent the default zoom behavior
     if (now - lastTouchEnd <= 300) {
       e.preventDefault();
     }
     lastTouchEnd = now;
   }, { passive: false });
 
-  // 5) Gather Telegram parameters from index.html (global vars)
+  // 3) Parse URL params for inline_message_id and user_id
+  const urlParams = new URLSearchParams(window.location.search);
+  const inlineMessageId = urlParams.get('inline_message_id');
+  const userId = urlParams.get('user_id');
+  const username = urlParams.get('username') || 'Player';
+
+  // 4) Build the telegramData object
   const telegramData = {
-    userId: window.TELEGRAM_USER_ID,
-    username: window.TELEGRAM_USERNAME,
-    chatId: window.TELEGRAM_CHAT_ID,
-    messageId: window.TELEGRAM_MESSAGE_ID
+    userId: userId,
+    username: username,
+    inlineMessageId: inlineMessageId
   };
   console.log("Telegram Data:", telegramData);
 
-  // 6) Start Screen Logic
+  // 5) Start Screen Logic
   if (sessionStorage.getItem("skipStartScreen") === "true") {
-    // If we've already seen the start screen, jump straight to the game
     startGame(telegramData);
   } else {
     const startScreen = document.getElementById("startScreen");
@@ -66,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const startButton = document.getElementById("startButton");
     startScreen.style.display = "flex";
 
-    // Attempt to play the start screen video
     if (startVideo) {
       startVideo.play().catch(err => console.log("startVideo play error:", err));
     }
@@ -74,10 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startButton.addEventListener("click", () => {
       sessionStorage.setItem("skipStartScreen", "true");
       startScreen.style.display = "none";
-      // In case autoplay was blocked, try again after user interaction
       audioManager.play().catch((err) => console.log('User start -> still blocked?', err));
-
-      // Pass Telegram data to your game
       startGame(telegramData);
     });
   }

@@ -36,7 +36,7 @@ tileImg.onload = () => {
 };
 
 // === 2) START GAME FUNCTION ===============================================
-// Accept an optional object "telegramData" with { userId, username, chatId, messageId }.
+// Accept an object "telegramData" with { userId, username, inlineMessageId }.
 export function startGame(telegramData = {}) {
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
@@ -50,7 +50,7 @@ export function startGame(telegramData = {}) {
 
   // Extract user info (fallback to 'Player' if no username)
   const playerUsername = telegramData.username || 'Player';
-  const { userId, chatId, messageId } = telegramData;
+  const { userId, inlineMessageId } = telegramData;
 
   // Create the player
   const player = new Player(canvas);
@@ -78,11 +78,11 @@ export function startGame(telegramData = {}) {
   // Show the player's Telegram username & current score
   scoreDisplay.innerText = `@${playerUsername} Score: 0`;
 
-  // Fetch the top scorer from Telegram for this chat (instead of local high score)
-  fetchChatTopScorer();
+  // Fetch the top scorer from Telegram for this inline message
+  fetchInlineTopScorer();
 
-  async function fetchChatTopScorer() {
-    const scores = await ScoreManager.getChatHighScores(userId, chatId, messageId);
+  async function fetchInlineTopScorer() {
+    const scores = await ScoreManager.getInlineHighScores(userId, inlineMessageId);
     if (scores.length > 0) {
       const topScorer = scores[0]; // highest score is first
       highScoreDisplay.innerText = `Top: @${topScorer.username} - ${topScorer.score}`;
@@ -153,7 +153,6 @@ export function startGame(telegramData = {}) {
     score = Math.floor(highestWorldY);
 
     if (score !== lastScore) {
-      // Update the DOM text to show the player's username & new score
       scoreDisplay.innerText = `@${playerUsername} Score: ${score}`;
       lastScore = score;
     }
@@ -228,8 +227,8 @@ export function startGame(telegramData = {}) {
 
   // === GAME OVER LOGIC ===
   function handleGameOver() {
-    // 1. Send final score to Telegram scoreboard
-    ScoreManager.setTelegramScore(score, userId, chatId, messageId);
+    // 1. Send final score to Telegram scoreboard (INLINE)
+    ScoreManager.setTelegramScoreInline(score, userId, inlineMessageId);
 
     // 2. Show Game Over overlay
     if (gameOverScreen.style.display !== "flex") {
@@ -247,7 +246,8 @@ export function startGame(telegramData = {}) {
 
   if (trophyButton) {
     trophyButton.addEventListener("click", async () => {
-      const scores = await ScoreManager.getChatHighScores(userId, chatId, messageId);
+      // getInlineHighScores instead of getChatHighScores
+      const scores = await ScoreManager.getInlineHighScores(userId, inlineMessageId);
       leaderboardList.innerHTML = "";
       if (scores.length === 0) {
         leaderboardList.innerHTML = "<p>No scores yet.</p>";

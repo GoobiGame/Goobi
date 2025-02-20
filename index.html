@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- This meta tag locks the viewport to 400px width and disables scaling,
-       which stops iOS from zooming on double tap -->
   <meta name="viewport" content="width=400, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta charset="UTF-8">
   <title>Goobi</title>
@@ -10,13 +8,12 @@
   <style>
     /* Header */
     #header {
-      position: relative; /* We can absolutely position elements inside */
+      position: relative;
       width: 100%;
       height: 70px;
       background-color: black;
       color: white;
     }
-
     /* Left: Score Display */
     #scoreDisplay {
       position: absolute;
@@ -25,7 +22,6 @@
       transform: translateY(-50%);
       font-size: 1em;
     }
-
     /* Center: Trophy Button */
     #trophyButton {
       position: absolute;
@@ -33,9 +29,8 @@
       left: 50%;
       transform: translate(-50%, -50%);
       cursor: pointer;
-      font-size: 1.5em; /* Make the emoji a bit larger */
+      font-size: 1.5em; /* Make the emoji bigger */
     }
-
     /* Right: High Score + Mute Button */
     #soundControl {
       position: absolute;
@@ -47,7 +42,7 @@
       align-items: flex-end;
     }
     #highScoreDisplay {
-      margin-bottom: 5px; /* small spacing above the mute button */
+      margin-bottom: 5px;
     }
     #muteButton {
       padding: 6px 10px;
@@ -245,23 +240,17 @@
   <div id="debugDiv"></div>
 
   <!-- 
-    This script block parses Telegram parameters from the URL.
-    For example, Telegram might call your game with:
-    ?user_id=12345&username=Alice&chat_id=-100123&message_id=45
-    We'll store them in global variables for easy access in main.js.
+    This script block just shows the entire query string in the debug div,
+    so you can see inline_message_id, user_id, username, etc.
+    The actual parsing happens in main.js now.
   -->
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    window.TELEGRAM_USER_ID = urlParams.get('user_id') || null;
-    window.TELEGRAM_USERNAME = urlParams.get('username') || 'Player';
-    window.TELEGRAM_CHAT_ID = urlParams.get('chat_id') || null;
-    window.TELEGRAM_MESSAGE_ID = urlParams.get('message_id') || null;
-
-    // Show the actual query string in the debug div
     const debugDiv = document.getElementById("debugDiv");
     debugDiv.innerText = "URL Search Params: " + window.location.search;
   </script>
 
+  <!-- main.js will parse inline_message_id and user_id from the URL,
+       then start the game with telegramData. -->
   <script type="module" src="main.js"></script>
 </body>
 </html>
