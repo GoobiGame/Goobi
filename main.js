@@ -42,12 +42,20 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.Telegram && Telegram.WebApp) {
     // Expand the web app if you want
     Telegram.WebApp.expand();
+
+    // 3A) Scale the game if stable viewport < 740
+    const stableH = Telegram.WebApp.viewportStableHeight;
+    if (stableH && stableH < 740) {
+      const scaleFactor = stableH / 740;
+      const wrapper = document.getElementById("gameWrapper");
+      wrapper.style.transformOrigin = "top left"; // ensure scaling from top-left
+      wrapper.style.transform = `scale(${scaleFactor})`;
+    }
+
+    // 3B) Read user data
     const user = Telegram.WebApp.initDataUnsafe.user;
     if (user) {
-      // If user has a public username, use it; else fallback to first_name or "Player"
       finalUsername = user.username || user.first_name || "Player";
-
-      // If user has a profile photo, set the avatar
       if (user.photo_url) {
         const avatarImg = document.getElementById("userAvatar");
         if (avatarImg) {

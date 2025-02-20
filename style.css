@@ -24,12 +24,13 @@ body {
 
 /* Game wrapper: fixed size, no scaling */
 #gameWrapper {
+    position: relative;
     width: 400px;
+    height: 740px; /* Enough space for canvas + buttons + start screen */
     background: #222;
     border: 1px solid #333;
-    position: relative;
-    max-height: var(--tg-viewport-stable-height);
-    overflow: hidden;
+    overflow: hidden; /* No scrolling in the container itself */
+    transform-origin: top left; /* So we can scale from the top-left corner */
 }
 
 /* Header styling */
