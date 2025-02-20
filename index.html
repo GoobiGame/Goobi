@@ -18,9 +18,19 @@
     #scoreDisplay {
       position: absolute;
       top: 50%;
-      left: 10px;
+      left: 70px; /* Shifted right a bit to make room for the avatar */
       transform: translateY(-50%);
       font-size: 1em;
+    }
+    /* The user avatar */
+    #userAvatar {
+      position: absolute;
+      top: 50%;
+      left: 10px;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%; /* optional: make it circular */
     }
     /* Right: High Score + Mute Button */
     #soundControl {
@@ -123,17 +133,15 @@
       display: inline-block;
       cursor: pointer;
     }
-
-    /* Remove the old Leaderboard Overlay (Trophy) entirely */
-
-    /* Debug Div also removed */
-
   </style>
 </head>
 <body>
   <!-- Game Wrapper -->
   <div id="gameWrapper">
     <div id="header">
+      <!-- The user avatar -->
+      <img id="userAvatar" src="default-avatar.png" alt="Profile">
+
       <!-- Left: Score Display (username + current score) -->
       <div id="scoreDisplay">Score: 0</div>
 

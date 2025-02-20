@@ -3,7 +3,7 @@ import { startGame } from './game.js';
 import { AudioManager } from './audioManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1) Audio setup
+  // 1) Audio setup (same as before)
   const audioManager = new AudioManager('assets/themeMusic.wav');
   audioManager.play().catch((err) => {
     console.log('Autoplay was blocked:', err);
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     muteButton.blur();
   });
 
-  // 2) Prevent pinch-zoom, context menu, etc.
+  // 2) Prevent pinch-zoom, context menu, etc. (same as before)
   const canvas = document.getElementById("gameCanvas");
   if (canvas) {
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -35,16 +35,26 @@ document.addEventListener('DOMContentLoaded', () => {
     lastTouchEnd = now;
   }, { passive: false });
 
-  // 3) Parse username from URL (fallback to "Player")
-  //    We remove inlineMessageId, userId, etc.
+  // 3) Parse URL params for username
   const urlParams = new URLSearchParams(window.location.search);
   const username = urlParams.get('username') || 'Player';
 
-  // 4) Build the data object with just the username
+  // 4) Check if inside Telegram WebApp, set user avatar if available
+  if (window.Telegram && Telegram.WebApp) {
+    // Expand the web app if you want
+    Telegram.WebApp.expand();
+    const user = Telegram.WebApp.initDataUnsafe.user;
+    if (user && user.photo_url) {
+      const avatarImg = document.getElementById("userAvatar");
+      avatarImg.src = user.photo_url;
+    }
+  }
+
+  // 5) Build the telegramData object
   const telegramData = { username };
   console.log("Telegram Data:", telegramData);
 
-  // 5) Start Screen Logic
+  // 6) Start Screen Logic
   if (sessionStorage.getItem("skipStartScreen") === "true") {
     startGame(telegramData);
   } else {
