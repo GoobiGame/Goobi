@@ -4,28 +4,56 @@
   <meta name="viewport" content="width=400, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta charset="UTF-8">
   <title>Goobi</title>
-  <link rel="stylesheet" href="style.css">
 
+  <!-- Telegram WebApp script -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  
+
+  <!-- Inline CSS for entire layout -->
   <style>
-    /* Header */
-    #header {
+    /* GLOBAL RESET & BOX-SIZING */
+    * {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      background: #111;
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      touch-action: manipulation;
+    }
+
+    /* GAME WRAPPER: fixed 400×740 bounding box */
+    #gameWrapper {
       position: relative;
+      width: 400px;
+      height: 740px;
+      background: #222;
+      border: 1px solid #333;
+
+      /* We'll scale this entire box in main.js if stableH < 740 */
+      transform-origin: top left; /* So it scales from top-left corner */
+    }
+
+    /* HEADER at the top (60px now, up from 50px) */
+    #header {
+      position: absolute;
+      top: 0; left: 0;
       width: 100%;
-      height: 70px;
+      height: 60px; /* was 50px, now 60px to fit the text fully */
       background-color: black;
       color: white;
     }
-    /* Left: Score Display */
-    #scoreDisplay {
-      position: absolute;
-      top: 50%;
-      left: 70px; /* Shifted right a bit to make room for the avatar */
-      transform: translateY(-50%);
-      font-size: 1em;
-    }
-    /* The user avatar */
+
+    /* The user avatar inside the header */
     #userAvatar {
       position: absolute;
       top: 50%;
@@ -33,9 +61,19 @@
       transform: translateY(-50%);
       width: 40px;
       height: 40px;
-      border-radius: 50%; /* optional: make it circular */
+      border-radius: 50%;
     }
-    /* Right: High Score + Mute Button */
+
+    /* Score display inside the header */
+    #scoreDisplay {
+      position: absolute;
+      top: 50%;
+      left: 70px;
+      transform: translateY(-50%);
+      font-size: 1em;
+    }
+
+    /* High Score & Mute button inside the header */
     #soundControl {
       position: absolute;
       top: 50%;
@@ -58,14 +96,62 @@
       cursor: pointer;
     }
 
-    /* Start Screen */
-    #startScreen {
-      position: fixed;
-      top: 50%;
-      left: 50%;
+    /* CANVAS below the header */
+    /* Now 590px (instead of 600) so total remains 740 (60 + 590 + 90) */
+    #gameCanvas {
+      position: absolute;
+      top: 60px; /* was 50px, now 60px to match the header’s new height */
+      left: 0;
       width: 400px;
-      height: 740px;
-      transform: translate(-50%, -50%);
+      height: 590px; /* was 600px, now 590px */
+      background: #222;
+      display: block;
+    }
+
+    /* TOUCH CONTROLS at the bottom (90px) */
+    #touchControls {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 100%;
+      height: 90px; /* unchanged */
+      background: #111;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+    }
+
+    #moveControls {
+      display: flex;
+      gap: 10px;
+    }
+    #jumpControl {
+      display: flex;
+      align-items: center;
+    }
+
+    /* Buttons */
+    button {
+      font-size: 20px;
+      padding: 10px 15px;
+      border: none;
+      background: #444;
+      color: greenyellow;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 5px;
+      touch-action: manipulation;
+    }
+    #touchControls button {
+      font-size: 24px;
+      padding: 20px;
+    }
+
+    /* START SCREEN (absolute overlay) */
+    #startScreen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       background: rgba(0, 0, 0, 0.7);
       overflow: hidden;
       z-index: 1000;
@@ -76,10 +162,8 @@
     }
     #startScreen video {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 400px;
-      height: 740px;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       object-fit: cover;
       z-index: 0;
     }
@@ -93,14 +177,11 @@
       font-size: 1.2em;
     }
 
-    /* Game Over Screen */
+    /* GAME OVER SCREEN (absolute overlay) */
     #gameOverScreen {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      width: 400px;
-      height: 740px;
-      transform: translate(-50%, -50%);
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       background: rgba(0, 0, 0, 0.7);
       color: white;
       display: none;
@@ -112,10 +193,8 @@
     }
     #gameOverScreen video {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 400px;
-      height: 740px;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       object-fit: cover;
       z-index: 0;
     }
@@ -139,24 +218,22 @@
   </style>
 </head>
 <body>
-  <!-- Game Wrapper -->
+  <!-- GAME WRAPPER (400×740) -->
   <div id="gameWrapper">
+    <!-- Header (60px) -->
     <div id="header">
-      <!-- The user avatar -->
       <img id="userAvatar" src="default-avatar.png" alt="Profile">
-
-      <!-- Left: Score Display (username + current score) -->
       <div id="scoreDisplay">Score: 0</div>
-
-      <!-- Right: High Score + Mute Button -->
       <div id="soundControl">
         <div id="highScoreDisplay">High Score: 0</div>
         <button id="muteButton">Sound ON</button>
       </div>
     </div>
 
+    <!-- Canvas (590px) -->
     <canvas id="gameCanvas" width="400" height="600"></canvas>
 
+    <!-- Touch controls (90px) -->
     <div id="touchControls">
       <div id="moveControls">
         <button id="leftBtn">Left</button>
@@ -166,30 +243,119 @@
         <button id="jumpBtn">Jump</button>
       </div>
     </div>
-  </div>
 
-  <!-- Start Screen -->
-  <div id="startScreen">
-    <video id="startVideo" loop muted playsinline>
-      <source src="assets/start.mp4" type="video/mp4">
-      Your browser does not support the video tag.
-    </video>
-    <div id="startContent">
-      <button id="startButton">Start</button>
+    <!-- Start Screen -->
+    <div id="startScreen">
+      <video id="startVideo" loop muted playsinline>
+        <source src="assets/start.mp4" type="video/mp4">
+      </video>
+      <div id="startContent">
+        <button id="startButton">Start</button>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen">
+      <video id="gameOverVideo" loop muted playsinline>
+        <source src="assets/gameOver.mp4" type="video/mp4">
+      </video>
+      <h1 id="gameOverMessage">Game Over</h1>
+      <button id="gameOverOkButton">OK</button>
     </div>
   </div>
 
-  <!-- Game Over Screen -->
-  <div id="gameOverScreen">
-    <video id="gameOverVideo" loop muted playsinline>
-      <source src="assets/gameOver.mp4" type="video/mp4">
-      Your browser does not support the video tag.
-    </video>
-    <h1 id="gameOverMessage">Game Over</h1>
-    <button id="gameOverOkButton">OK</button>
-  </div>
+  <!-- MAIN.JS with scale logic -->
+  <script type="module">
+    import { startGame } from './game.js';
+    import { AudioManager } from './audioManager.js';
 
-  <!-- main.js will parse any URL params and start the game. -->
-  <script type="module" src="main.js"></script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1) Audio
+      const audioManager = new AudioManager('assets/themeMusic.wav');
+      audioManager.play().catch((err) => {
+        console.log('Autoplay was blocked:', err);
+      });
+      
+      const muteButton = document.getElementById('muteButton');
+      muteButton.addEventListener('click', () => {
+        audioManager.toggleMute();
+        muteButton.textContent = audioManager.isMuted() ? 'Sound OFF' : 'Sound ON';
+        muteButton.blur();
+      });
+
+      // 2) Prevent pinch-zoom, etc.
+      const canvas = document.getElementById("gameCanvas");
+      if (canvas) {
+        canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+      }
+      document.addEventListener("touchstart", (e) => {
+        if (e.touches.length > 1) e.preventDefault();
+      }, { passive: false });
+      document.addEventListener("gesturestart", (e) => e.preventDefault());
+      document.addEventListener("contextmenu", (e) => e.preventDefault());
+      let lastTouchEnd = 0;
+      document.addEventListener("touchend", (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, { passive: false });
+
+      // 3) Telegram user data
+      let finalUsername = "Player";
+      if (window.Telegram && Telegram.WebApp) {
+        Telegram.WebApp.expand();
+
+        // Scale if stable height < 740
+        const stableH = Telegram.WebApp.viewportStableHeight;
+        if (stableH && stableH < 740) {
+          const scaleFactor = stableH / 740;
+          const wrapper = document.getElementById("gameWrapper");
+          wrapper.style.transformOrigin = "top left";
+          wrapper.style.transform = `scale(${scaleFactor})`;
+        }
+
+        const user = Telegram.WebApp.initDataUnsafe.user;
+        if (user) {
+          finalUsername = user.username || user.first_name || "Player";
+          if (user.photo_url) {
+            const avatarImg = document.getElementById("userAvatar");
+            if (avatarImg) {
+              avatarImg.src = user.photo_url;
+            }
+          }
+        }
+      } else {
+        // fallback if not in Telegram
+        const urlParams = new URLSearchParams(window.location.search);
+        finalUsername = urlParams.get('username') || "Player";
+      }
+
+      const telegramData = { username: finalUsername };
+      console.log("Telegram Data:", telegramData);
+
+      // 4) Start screen logic
+      if (sessionStorage.getItem("skipStartScreen") === "true") {
+        startGame(telegramData);
+      } else {
+        const startScreen = document.getElementById("startScreen");
+        const startVideo = document.getElementById("startVideo");
+        const startButton = document.getElementById("startButton");
+        startScreen.style.display = "flex";
+
+        if (startVideo) {
+          startVideo.play().catch(err => console.log("startVideo play error:", err));
+        }
+
+        startButton.addEventListener("click", () => {
+          sessionStorage.setItem("skipStartScreen", "true");
+          startScreen.style.display = "none";
+          audioManager.play().catch((err) => console.log('User start -> still blocked?', err));
+          startGame(telegramData);
+        });
+      }
+    });
+  </script>
 </body>
 </html>

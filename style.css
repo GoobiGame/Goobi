@@ -1,18 +1,14 @@
-/* Global box-sizing for consistency */
+/* Global box-sizing & user-select off */
 * {
-    -webkit-touch-callout: none; /* Disable iOS context menu */
+    -webkit-touch-callout: none;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
     box-sizing: border-box;
-}
-
-html, body {
-    touch-action: manipulation;
-}
-
-body {
+  }
+  
+  html, body {
     margin: 0;
     background: #111;
     font-family: sans-serif;
@@ -20,59 +16,111 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-}
-
-/* Game wrapper: fixed size, no scaling */
-#gameWrapper {
+    touch-action: manipulation;
+  }
+  
+  /* The entire game is a 400×740 box (unscaled) */
+  #gameWrapper {
     position: relative;
     width: 400px;
-    height: 740px; /* Enough space for canvas + buttons + start screen */
+    height: 740px;
     background: #222;
     border: 1px solid #333;
-    overflow: hidden; /* No scrolling in the container itself */
-    transform-origin: top left; /* So we can scale from the top-left corner */
-}
-
-/* Header styling */
-#header {
+  
+    /* We'll scale it in main.js if stableH < 740 */
+    transform-origin: top left; /* So we scale from top-left corner */
+  }
+  
+  /* Header at top: 50px high */
+  #header {
+    position: absolute;
+    top: 0; left: 0;
     width: 100%;
     height: 50px;
     background-color: black;
     color: white;
+  }
+  
+  /* Score display & user avatar positions (same as before) */
+  #userAvatar {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    transform: translateY(-50%);
+    width: 40px; height: 40px;
+    border-radius: 50%;
+  }
+  
+  #scoreDisplay {
+    position: absolute;
+    top: 50%;
+    left: 70px;
+    transform: translateY(-50%);
+    font-size: 1em;
+  }
+  
+  #soundControl {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 10px;
-}
-
-/* Canvas styling */
-canvas {
-    display: block;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  
+  #highScoreDisplay {
+    margin-bottom: 5px;
+  }
+  
+  #muteButton {
+    padding: 6px 10px;
+    font-size: 1rem;
+    background-color: #444;
+    color: greenyellow;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  /* The canvas sits below the header, filling leftover space */
+  #gameCanvas {
+    position: absolute;
+    top: 50px; /* below header’s 50px */
+    left: 0;
+    width: 400px;
+    height: 550px; /* 740 - 50 (header) - 140 (for controls)? Adjust if needed */
     background: #222;
-}
-
-/* Touch controls styling */
-#touchControls {
+  }
+  
+  /* Touch controls pinned to bottom? Let's say 640->740 is 100px. 
+     Adjust to fit your design. If you want the canvas to be 600, 
+     then you have 90 for controls, etc. 
+  */
+  #touchControls {
+    position: absolute;
+    bottom: 0; left: 0;
     width: 100%;
+    height: 90px; /* total leftover if you want a 600px canvas + 50px header */
+    background: #111;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 10px;
-    background: #111;
-}
-
-#moveControls {
+  }
+  
+  #moveControls {
     display: flex;
     gap: 10px;
-}
-
-#jumpControl {
+  }
+  
+  #jumpControl {
     display: flex;
     align-items: center;
-}
-
-/* Button styling */
-button {
+  }
+  
+  /* Button styling */
+  button {
     font-size: 20px;
     padding: 10px 15px;
     border: none;
@@ -82,66 +130,47 @@ button {
     user-select: none;
     border-radius: 5px;
     touch-action: manipulation;
-}
-
-/* Increase touch button size */
-#touchControls button {
-    font-size: 24px;
-    padding: 20px;
-}
-
-/* Responsive adjustments for smaller screens */
-@media (max-width: 500px) {
-    #gameWrapper {
-        width: 100%;
-    }
-    button {
-        font-size: 16px;
-        padding: 8px 12px;
-    }
-}
-
-/* Overlay styles – now absolutely positioned inside #gameWrapper */
-.overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: none;  /* Hidden by default */
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.overlay video {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-}
-
-.overlay h1,
-.overlay button {
-  position: relative;
-  z-index: 1;
-}
-
-#gameOverScreen h1 {
-  font-size: 3em;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-#gameOverScreen button {
-  padding: 10px 20px;
-  font-size: 1.2em;
-  width: auto;
-  display: inline-block;
-  cursor: pointer;
-}
+  }
+  
+  /* Start/End overlays fill the entire wrapper */
+  #startScreen, #gameOverScreen {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: none;
+    overflow: hidden;
+    z-index: 1000;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,0.7);
+  }
+  
+  #startScreen video,
+  #gameOverScreen video {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
+  
+  /* Start screen content, game over text, etc. above the video */
+  #startContent, #gameOverScreen h1, #gameOverScreen button {
+    position: relative;
+    z-index: 1;
+  }
+  
+  #gameOverScreen h1 {
+    font-size: 3em;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  #gameOverScreen button {
+    padding: 10px 20px;
+    font-size: 1.2em;
+    width: auto;
+    display: inline-block;
+    cursor: pointer;
+  }
