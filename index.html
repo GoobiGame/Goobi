@@ -35,7 +35,6 @@
       height: 740px;
       background: #222;
       border: 1px solid #333;
-      /* The transform here centers and scales the game */
       transform: translate(-50%, -50%) scale(1);
     }
 
@@ -95,6 +94,7 @@
       width: 400px;
       height: 590px;
       background: #222;
+      display: block;
     }
 
     /* TOUCH CONTROLS (90px) */
@@ -177,9 +177,11 @@
       color: white;
       overflow: hidden;
       z-index: 1000;
-      display: none;
+      display: none; /* important so it doesn't freeze the game at start */
+      
+      /* We'll use flex to space out the top "Game Over" text and bottom actions */
       flex-direction: column;
-      justify-content: center;
+      justify-content: space-between;
       align-items: center;
     }
     #gameOverScreen video {
@@ -190,18 +192,38 @@
       height: 100%;
       object-fit: cover;
       z-index: 0;
+      pointer-events: none; /* so the video doesn't block button clicks */
     }
-    #gameOverScreen h1,
-    #gameOverScreen button {
+
+    /* Title near the top */
+    #gameOverMessage {
       position: relative;
       z-index: 1;
-    }
-    #gameOverScreen h1 {
       font-size: 3em;
-      margin-bottom: 20px;
+      margin-top: 50px;
       text-align: center;
     }
-    #gameOverScreen button {
+
+    /* The container for the image preview + buttons near the bottom */
+    #gameOverActions {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 50px;
+    }
+
+    /* The share card preview image */
+    #shareCardPreview {
+      max-width: 80%;
+      border: 2px solid #fff;
+      margin: 10px 0;
+      display: none;
+    }
+
+    #gameOverActions button {
+      margin: 5px;
       padding: 10px 20px;
       font-size: 1.2em;
     }
@@ -209,6 +231,7 @@
 </head>
 <body>
   <div id="gameWrapper">
+    <!-- Header -->
     <div id="header">
       <img id="userAvatar" src="default-avatar.png" alt="Profile">
       <div id="scoreDisplay">Score: 0</div>
@@ -218,8 +241,10 @@
       </div>
     </div>
 
+    <!-- Canvas -->
     <canvas id="gameCanvas" width="400" height="600"></canvas>
 
+    <!-- Touch Controls -->
     <div id="touchControls">
       <div id="moveControls">
         <button id="leftBtn">Left</button>
@@ -230,6 +255,7 @@
       </div>
     </div>
 
+    <!-- Start Screen -->
     <div id="startScreen">
       <video id="startVideo" loop muted playsinline>
         <source src="assets/start.mp4" type="video/mp4">
@@ -239,12 +265,23 @@
       </div>
     </div>
 
+    <!-- Game Over Screen -->
     <div id="gameOverScreen">
       <video id="gameOverVideo" loop muted playsinline>
         <source src="assets/gameOver.mp4" type="video/mp4">
       </video>
+
       <h1 id="gameOverMessage">Game Over</h1>
-      <button id="gameOverOkButton">OK</button>
+
+      <div id="gameOverActions">
+        <!-- Preview image (generated at runtime) -->
+        <img id="shareCardPreview" src="" alt="Share Card Preview">
+
+        <!-- Buttons near the bottom -->
+        <button id="gameOverOkButton">Try Again</button>
+        <!-- REPLACED "Copy Image" with "Share Score" -->
+        <button id="shareScoreButton">Share Score</button>
+      </div>
     </div>
   </div>
 

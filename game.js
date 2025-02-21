@@ -1,4 +1,3 @@
-// game.js
 import { Player } from './player.js';
 import { Platform, generatePlatforms } from './platform.js';
 import { setupControls } from './controls.js';
@@ -25,7 +24,6 @@ tileImg.onload = () => {
 };
 
 // === 2) START GAME FUNCTION ===============================================
-// Accept an object "telegramData" with { username } only now.
 export function startGame(telegramData = {}) {
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
@@ -36,6 +34,8 @@ export function startGame(telegramData = {}) {
   let score = 0;
   let cameraY = 0;
   let highestWorldY = 0;
+  // Track if this game session achieved a new high score
+  let newHighScoreAchieved = false;
 
   // Extract user info (fallback to 'Player')
   const playerUsername = telegramData.username || 'Player';
@@ -70,7 +70,7 @@ export function startGame(telegramData = {}) {
   let localHighScore = parseInt(localStorage.getItem("localHighScore")) || 0;
   highScoreDisplay.innerText = `High: ${localHighScore}`;
 
-  // === Game Over overlay ===============================================
+  // === GAME OVER SCREEN LOGIC ===============================================
   const gameOverScreen = document.getElementById("gameOverScreen");
   const gameOverOkButton = document.getElementById("gameOverOkButton");
   const gameOverVideo = document.getElementById("gameOverVideo");
@@ -99,7 +99,7 @@ export function startGame(telegramData = {}) {
     // 3B) Clear or fill entire screen each frame
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // If tilePattern is ready, fill the screen with a scrolling pattern
+    // Fill the screen with a scrolling pattern if tilePattern is ready
     if (tilePattern) {
       const offset = (cameraY * PARALLAX_FACTOR) % SCALED_TILE_SIZE;
       ctx.save();
@@ -140,6 +140,7 @@ export function startGame(telegramData = {}) {
         localHighScore = score;
         localStorage.setItem("localHighScore", localHighScore);
         highScoreDisplay.innerText = `High: ${localHighScore}`;
+        newHighScoreAchieved = true;
       }
     }
 
@@ -213,13 +214,20 @@ export function startGame(telegramData = {}) {
 
   // === GAME OVER LOGIC ===
   function handleGameOver() {
-    // 1. We do NOT send any Telegram score. Just local logic.
+    // Store the final score and whether a new high score was achieved for sharing
+    window.finalScore = score;
+    window.isNewHighScore = newHighScoreAchieved;
 
-    // 2. Show Game Over overlay
+    // Show Game Over overlay
     if (gameOverScreen.style.display !== "flex") {
       gameOverVideo.currentTime = 0;
       gameOverVideo.play();
     }
     gameOverScreen.style.display = "flex";
+
+    // Generate the share card preview
+    if (window.updateShareCardPreview) {
+      window.updateShareCardPreview();
+    }
   }
 }

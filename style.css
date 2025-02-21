@@ -153,6 +153,7 @@
     width: 100%; height: 100%;
     object-fit: cover;
     z-index: 0;
+    pointer-events: none;
   }
   
   /* Start screen content, game over text, etc. above the video */
