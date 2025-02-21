@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 4) Audio
   const audioManager = new AudioManager('assets/themeMusic.wav');
+  // We'll do .play() now, but on desktop it may be blocked until user gesture
   audioManager.play().catch((err) => {
     console.log('Autoplay blocked:', err);
   });
@@ -73,6 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 7) Start screen logic
   if (sessionStorage.getItem('skipStartScreen') === 'true') {
+    // If skipStartScreen, we immediately start the game
+    // Desktop might block startVideo from playing automatically
     startGame(window.telegramData);
   } else {
     const startScreen = document.getElementById('startScreen');
@@ -80,14 +83,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const startButton = document.getElementById('startButton');
     startScreen.style.display = 'flex';
 
+    // Attempt to play the startVideo (desktop may block until user gesture)
     if (startVideo) {
       startVideo.play().catch(err => console.log('startVideo play error:', err));
     }
 
+    // When user clicks "Start", we do a user gesture => desktop unblocks video & audio
     startButton.addEventListener('click', () => {
       sessionStorage.setItem('skipStartScreen', 'true');
       startScreen.style.display = 'none';
+
+      // Attempt to play audio & video again with user gesture => unblocked on desktop
       audioManager.play().catch(err => console.log('User start -> still blocked?', err));
+      if (startVideo) {
+        startVideo.play().catch(err => console.log('startVideo user-gesture error:', err));
+      }
+
       startGame(window.telegramData);
     });
   }
@@ -171,19 +182,16 @@ function generateShareCardDataURL() {
       const newHigh = window.isNewHighScore === true;
 
       // Positions
-      const mainLineY = 270;       // ~1/4 from top
-      const highScoreLineY = mainLineY - 120; // 120px above the main line
+      const mainLineY = 270;
+      const highScoreLineY = mainLineY - 120;
 
-      // If new personal high score
       if (newHigh) {
         drawCenteredText(ctx, 'New Personal High Score!', highScoreLineY, '100px sans-serif', 'red');
       }
 
-      // Main line: "@username - Score: 1251"
       const mainLine = `@${username} - Score: ${finalScore}`;
       drawCenteredText(ctx, mainLine, mainLineY, '100px sans-serif', 'white');
 
-      // Return final image
       const dataURL = canvas.toDataURL('image/png');
       resolve(dataURL);
     };
@@ -193,7 +201,7 @@ function generateShareCardDataURL() {
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Fallback text
+      // fallback text
       const username = window.telegramData?.username || 'Player';
       const finalScore = window.finalScore ?? 0;
       const newHigh = window.isNewHighScore === true;
