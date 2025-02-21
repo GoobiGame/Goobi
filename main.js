@@ -179,8 +179,8 @@ async function shareScoreCard() {
     // For the share text, let's mention the user & score
     const username = window.telegramData?.username || 'Player';
     const finalScore = window.finalScore ?? 0;
-    const shareText = `Check out my Goobi score! @${username} - Score: ${finalScore}`;
-
+    const shareText = `Check out my Goobi score! @${username} - Score: ${finalScore}\n\nPlay now: https://t.me/goobigamebot`;
+    
     // Check if the device can share files
     if (!navigator.canShare || !navigator.canShare({ files: [file] })) {
       alert('Sharing not supported on this device or browser.');
