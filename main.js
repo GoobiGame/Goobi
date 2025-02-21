@@ -1,14 +1,43 @@
-// main.js
 import { startGame } from './game.js';
 import { AudioManager } from './audioManager.js';
 
+/**
+ * Dynamically scale the gameWrapper so the fixed 400×740 game fits
+ * within the available viewport and stays centered.
+ */
+function scaleGame() {
+  const gameWrapper = document.getElementById('gameWrapper');
+  const gameWidth = 400;
+  const gameHeight = 740;
+
+  // Use window dimensions (or Telegram's stable height if available)
+  let viewportWidth = window.innerWidth;
+  let viewportHeight = window.innerHeight;
+  if (window.Telegram && Telegram.WebApp && Telegram.WebApp.viewportStableHeight) {
+    viewportHeight = Telegram.WebApp.viewportStableHeight;
+  }
+
+  // Calculate the scale factors and choose the smaller one
+  const scaleX = viewportWidth / gameWidth;
+  const scaleY = viewportHeight / gameHeight;
+  const scale = Math.min(scaleX, scaleY);
+
+  // Update transform: keep translate(-50%, -50%) to center, then scale.
+  gameWrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
+}
+
+// Update scaling when the window resizes
+window.addEventListener('resize', scaleGame);
+
 document.addEventListener('DOMContentLoaded', () => {
-  // 1) Audio
+  scaleGame();
+
+  // 1) Audio initialization
   const audioManager = new AudioManager('assets/themeMusic.wav');
   audioManager.play().catch((err) => {
     console.log('Autoplay was blocked:', err);
   });
-  
+
   const muteButton = document.getElementById('muteButton');
   muteButton.addEventListener('click', () => {
     audioManager.toggleMute();
@@ -16,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     muteButton.blur();
   });
 
-  // 2) Prevent pinch-zoom, etc.
+  // 2) Prevent pinch-zoom, context menu, etc.
   const canvas = document.getElementById("gameCanvas");
   if (canvas) {
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -36,20 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }, { passive: false });
 
   // 3) Telegram user data
-  let finalUsername = "Player"; // default
+  let finalUsername = "Player";
   if (window.Telegram && Telegram.WebApp) {
     Telegram.WebApp.expand();
-
-    // Scale if stable height < 740
-    const stableH = Telegram.WebApp.viewportStableHeight;
-    if (stableH && stableH < 740) {
-      const scaleFactor = stableH / 740;
-      const wrapper = document.getElementById("gameWrapper");
-      wrapper.style.transformOrigin = "top left";
-      wrapper.style.transform = `scale(${scaleFactor})`;
-    }
-
-    // Read user info
     const user = Telegram.WebApp.initDataUnsafe.user;
     if (user) {
       finalUsername = user.username || user.first_name || "Player";
@@ -61,15 +79,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   } else {
-    // fallback if not in Telegram
+    // Fallback if not in Telegram
     const urlParams = new URLSearchParams(window.location.search);
     finalUsername = urlParams.get('username') || "Player";
   }
-
   const telegramData = { username: finalUsername };
   console.log("Telegram Data:", telegramData);
 
-  // 4) Start screen
+  // 4) Start screen logic (unchanged from your original game logic)
   if (sessionStorage.getItem("skipStartScreen") === "true") {
     startGame(telegramData);
   } else {
