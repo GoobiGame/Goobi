@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2) Listen for viewport changes (e.g., user drags the mini app up)
     Telegram.WebApp.onEvent('viewportChanged', () => {
-      Telegram.WebApp.expand();  // ensure full height again
-      scaleGame();               // re-run scaling logic
+      Telegram.WebApp.expand();
+      scaleGame();
     });
   }
 
@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 4) Audio
   const audioManager = new AudioManager('assets/themeMusic.wav');
-  // We'll do .play() now, but on desktop it may be blocked until user gesture
   audioManager.play().catch((err) => {
     console.log('Autoplay blocked:', err);
   });
@@ -26,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const muteButton = document.getElementById('muteButton');
   muteButton.addEventListener('click', () => {
     audioManager.toggleMute();
-    muteButton.textContent = audioManager.isMuted() ? 'Sound OFF' : 'Sound ON';
+    muteButton.textContent = audioManager.isMuted() ? '🔇' : '🔊';
     muteButton.blur();
   });
 
@@ -56,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (user) {
       finalUsername = user.username || user.first_name || 'Player';
       if (user.photo_url) {
-        // Show the user’s avatar in the header (optional)
         const headerAvatar = document.getElementById('userAvatar');
         if (headerAvatar) {
           headerAvatar.src = user.photo_url;
@@ -64,18 +62,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   } else {
-    // Fallback if not in Telegram
+    // Fallback for non-Telegram environments (e.g., direct browser access)
     const urlParams = new URLSearchParams(window.location.search);
     finalUsername = urlParams.get('username') || 'Player';
   }
-
   window.telegramData = { username: finalUsername };
   console.log('Telegram Data:', window.telegramData);
 
   // 7) Start screen logic
   if (sessionStorage.getItem('skipStartScreen') === 'true') {
-    // If skipStartScreen, we immediately start the game
-    // Desktop might block startVideo from playing automatically
     startGame(window.telegramData);
   } else {
     const startScreen = document.getElementById('startScreen');
@@ -83,36 +78,88 @@ document.addEventListener('DOMContentLoaded', () => {
     const startButton = document.getElementById('startButton');
     startScreen.style.display = 'flex';
 
-    // Attempt to play the startVideo (desktop may block until user gesture)
     if (startVideo) {
       startVideo.play().catch(err => console.log('startVideo play error:', err));
     }
 
-    // When user clicks "Start", we do a user gesture => desktop unblocks video & audio
     startButton.addEventListener('click', () => {
       sessionStorage.setItem('skipStartScreen', 'true');
       startScreen.style.display = 'none';
-
-      // Attempt to play audio & video again with user gesture => unblocked on desktop
       audioManager.play().catch(err => console.log('User start -> still blocked?', err));
       if (startVideo) {
         startVideo.play().catch(err => console.log('startVideo user-gesture error:', err));
       }
-
       startGame(window.telegramData);
     });
   }
 
-  // 8) Hook up the "Share Score" button
-  const shareScoreButton = document.getElementById('shareScoreButton');
-  if (shareScoreButton) {
-    shareScoreButton.addEventListener('click', shareScoreCard);
+  // 8) Hook up the new buttons
+  const copyScoreButton = document.getElementById('copyScoreButton');
+  const shareToChatButton = document.getElementById('shareToChatButton');
+
+  if (copyScoreButton) {
+    copyScoreButton.addEventListener('click', copyScoreToClipboard);
   }
+  if (shareToChatButton) {
+    shareToChatButton.addEventListener('click', shareScoreToChat);
+  }
+
+  // 9) Hook up the leaderboard button
+  const leaderboardButton = document.getElementById('leaderboardButton');
+  const leaderboardScreen = document.getElementById('leaderboardScreen');
+  const leaderboardList = document.getElementById('leaderboardList');
+  const closeLeaderboardButton = document.getElementById('closeLeaderboardButton');
+
+  async function fetchLeaderboard() {
+    console.log('Fetching leaderboard from: https://144.202.20.103:8443/get_leaderboard');
+    const response = await fetch('https://144.202.20.103:8443/get_leaderboard');
+    console.log('Leaderboard fetch response:', response);
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    const data = await response.json();
+    console.log('Leaderboard data:', data);
+    return data;
+  }
+
+  async function fetchLeaderboardWithRetry(retries = 3, delay = 1000) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fetchLeaderboard();
+      } catch (error) {
+        if (i === retries - 1) {
+          console.error('All retries failed, returning default value');
+          return [];
+        }
+        console.log(`Retrying fetchLeaderboard (${i + 1}/${retries})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  leaderboardButton.addEventListener('click', async () => {
+    try {
+      const data = await fetchLeaderboardWithRetry();
+      if (data.length === 0) {
+        leaderboardList.innerHTML = '<p>No scores yet!</p>';
+      } else {
+        leaderboardList.innerHTML = data.map((entry, index) => 
+          `<p>${index + 1}. @${entry.username}: ${entry.score} points</p>`
+        ).join('');
+      }
+      leaderboardScreen.style.display = 'flex';
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      leaderboardList.innerHTML = '<p>Error loading leaderboard</p>';
+      leaderboardScreen.style.display = 'flex';
+    }
+  });
+
+  closeLeaderboardButton.addEventListener('click', () => {
+    leaderboardScreen.style.display = 'none';
+  });
 });
 
-/**
- * Dynamically scale the 400×740 game so it fits within the viewport.
- */
 function scaleGame() {
   const gameWrapper = document.getElementById('gameWrapper');
   const gameWidth = 400;
@@ -121,7 +168,6 @@ function scaleGame() {
   let viewportWidth = window.innerWidth;
   let viewportHeight = window.innerHeight;
 
-  // If Telegram provides a stable viewport height, use that
   if (window.Telegram && Telegram.WebApp && Telegram.WebApp.viewportStableHeight) {
     viewportHeight = Telegram.WebApp.viewportStableHeight;
   }
@@ -130,26 +176,16 @@ function scaleGame() {
   const scaleY = viewportHeight / gameHeight;
   const scale = Math.min(scaleX, scaleY);
 
-  // Center the game at (50%, 50%) then scale it
   gameWrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
 }
 
-// Re-scale on normal window resize events
 window.addEventListener('resize', scaleGame);
 
-/**
- * We'll store the last-generated share card data URL here so we don't
- * have to regenerate every time the user clicks "Share Score".
- */
 window.shareCardDataURL = null;
 
-/**
- * A helper to draw text **centered horizontally** at a given (y) coordinate.
- */
 function drawCenteredText(ctx, text, y, font, fillStyle) {
   ctx.font = font;
   ctx.fillStyle = fillStyle;
-
   const measure = ctx.measureText(text);
   const textWidth = measure.width;
   const centerX = ctx.canvas.width / 2;
@@ -157,11 +193,6 @@ function drawCenteredText(ctx, text, y, font, fillStyle) {
   ctx.fillText(text, x, y);
 }
 
-/**
- * Creates a 1920×1080 share card image with your `card.png` as the background,
- * then draws the player's username + score ~1/4 from top, etc.
- * Returns a Promise that resolves to "data:image/png;base64,..."
- */
 function generateShareCardDataURL() {
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
@@ -173,27 +204,50 @@ function generateShareCardDataURL() {
     bgImg.src = 'assets/card.png';
 
     bgImg.onload = () => {
-      // Draw background
       ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
-      // Gather user data
       const username = window.telegramData?.username || 'Player';
       const finalScore = window.finalScore ?? 0;
       const newHigh = window.isNewHighScore === true;
 
-      // Positions
-      const mainLineY = 270;
-      const highScoreLineY = mainLineY - 120;
+      // Draw placeholder PFP area
+      ctx.fillStyle = '#444';
+      const pfpSize = 200;
+      const pfpX = (canvas.width - pfpSize) / 2;
+      const pfpY = 50;
+      ctx.fillRect(pfpX, pfpY, pfpSize, pfpSize);
 
-      if (newHigh) {
-        drawCenteredText(ctx, 'New Personal High Score!', highScoreLineY, '100px sans-serif', 'red');
+      const pfpImg = new Image();
+      pfpImg.crossOrigin = 'Anonymous';
+      console.log('Attempting to load PFP from:', document.getElementById('userAvatar').src);
+      pfpImg.src = document.getElementById('userAvatar').src;
+
+      pfpImg.onload = () => {
+        console.log('PFP loaded successfully:', pfpImg.src);
+        ctx.drawImage(pfpImg, pfpX, pfpY, pfpSize, pfpSize);
+        renderText();
+      };
+
+      pfpImg.onerror = (err) => {
+        console.error('PFP failed to load:', pfpImg.src, err);
+        ctx.fillStyle = '#666';
+        ctx.fillRect(pfpX, pfpY, pfpSize, pfpSize);
+        renderText();
+      };
+
+      function renderText() {
+        const mainLineY = pfpY + pfpSize + 70;
+        const highScoreLineY = mainLineY - 120;
+
+        if (newHigh) {
+          drawCenteredText(ctx, 'New Personal High Score!', highScoreLineY, '100px sans-serif', 'red');
+        }
+        const mainLine = `@${username} - Score: ${finalScore}`;
+        drawCenteredText(ctx, mainLine, mainLineY, '100px sans-serif', 'white');
+
+        const dataURL = canvas.toDataURL('image/png');
+        resolve(dataURL);
       }
-
-      const mainLine = `@${username} - Score: ${finalScore}`;
-      drawCenteredText(ctx, mainLine, mainLineY, '100px sans-serif', 'white');
-
-      const dataURL = canvas.toDataURL('image/png');
-      resolve(dataURL);
     };
 
     bgImg.onerror = (err) => {
@@ -201,7 +255,6 @@ function generateShareCardDataURL() {
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // fallback text
       const username = window.telegramData?.username || 'Player';
       const finalScore = window.finalScore ?? 0;
       const newHigh = window.isNewHighScore === true;
@@ -220,10 +273,6 @@ function generateShareCardDataURL() {
   });
 }
 
-/**
- * Called at game-over. Generates the share card, puts it in #shareCardPreview,
- * and stores it in window.shareCardDataURL for later use.
- */
 window.updateShareCardPreview = async function() {
   try {
     const dataURL = await generateShareCardDataURL();
@@ -239,64 +288,59 @@ window.updateShareCardPreview = async function() {
   }
 };
 
-/**
- * The main share function. Uses the Web Share API to show the device's share sheet.
- */
-async function shareScoreCard() {
+async function copyScoreToClipboard() {
   try {
     if (!window.shareCardDataURL) {
       window.shareCardDataURL = await generateShareCardDataURL();
     }
     const dataURL = window.shareCardDataURL;
 
-    // dataURL -> Blob -> File -> navigator.share
-    const blob = await new Promise((resolve) => {
-      const tempImg = new Image();
-      tempImg.onload = () => {
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = tempImg.width;
-        tempCanvas.height = tempImg.height;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(tempImg, 0, 0);
-        tempCanvas.toBlob((b) => resolve(b), 'image/png');
-      };
-      tempImg.onerror = () => {
-        resolve(null);
-      };
-      tempImg.src = dataURL;
-    });
-
-    if (!blob) {
-      throw new Error('Failed to create blob from share card.');
-    }
-
-    const file = new File([blob], 'score.png', { type: 'image/png' });
-
+    const blob = await fetch(dataURL).then(res => res.blob());
     const username = window.telegramData?.username || 'Player';
     const finalScore = window.finalScore ?? 0;
-    const shareText = `Check out my Goobi score! @${username} - Score: ${finalScore}\n\nPlay now: https://t.me/goobigamebot`;
+    const shareText = `Check out my Goobi score! @${username} - Score: ${finalScore}\nPlay now: https://t.me/goobigamebot`;
 
-    if (!navigator.canShare || !navigator.canShare({ files: [file] })) {
-      alert('Sharing not supported on this device or browser.');
-      return;
-    }
-
-    await navigator.share({
-      files: [file],
-      title: 'My Goobi Score',
-      text: shareText
-    });
-
-    console.log('Share completed successfully!');
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'image/png': blob,
+        'text/plain': new Blob([shareText], { type: 'text/plain' })
+      })
+    ]);
+    alert('Score card and link copied to clipboard! Paste it anywhere.');
   } catch (err) {
-    console.log('Share error details:', err);
+    console.error('Clipboard write failed:', err);
+    const username = window.telegramData?.username || 'Player';
+    const finalScore = window.finalScore ?? 0;
+    const shareText = `Check out my Goobi score! @${username} - Score: ${finalScore}\nPlay now: https://t.me/goobigamebot`;
+    await navigator.clipboard.writeText(shareText);
+    alert('Image copy failed, but text was copied! Paste it anywhere.');
+  }
+}
 
-    const ignoredErrors = ['AbortError', 'NotAllowedError', 'SecurityError', 'UnknownError'];
-    if (ignoredErrors.includes(err.name)) {
-      console.log('User canceled or share completed, ignoring...');
-    } else {
-      console.error('Share error:', err);
-      alert('Sorry, sharing is not supported in this environment.');
+async function shareScoreToChat() {
+  try {
+    if (!window.shareCardDataURL) {
+      window.shareCardDataURL = await generateShareCardDataURL();
     }
+    const dataURL = window.shareCardDataURL;
+    const username = window.telegramData?.username || 'Player';
+    const finalScore = window.finalScore ?? 0;
+    const shareText = `Check out my Goobi score! @${username} - Score: ${finalScore}\nPlay now: https://t.me/goobigamebot`;
+
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.sendData(JSON.stringify({
+        type: 'share_score',
+        text: shareText,
+        score: finalScore,
+        username: username
+      }));
+      console.log('Sent to Telegram chat:', { text: shareText });
+    } else {
+      console.log('Mock share to chat:', { text: shareText });
+      alert('Shared to chat (mocked): ' + shareText);
+    }
+  } catch (err) {
+    console.error('Share to chat failed:', err);
+    alert('Failed to share to chat. Try copying instead.');
   }
 }

@@ -47,43 +47,61 @@
       height: 60px;
       background-color: black;
       color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
     }
     #userAvatar {
       position: absolute;
+      left: 50%;
       top: 50%;
-      left: 10px;
-      transform: translateY(-50%);
+      transform: translate(-50%, -50%);
       width: 40px;
       height: 40px;
       border-radius: 50%;
     }
     #scoreDisplay {
       position: absolute;
-      top: 50%;
-      left: 70px;
-      transform: translateY(-50%);
-      font-size: 1em;
+      top: 5px;
+      left: 10px;
+      font-size: 0.8em;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: flex;
+      flex-direction: column;
     }
     #soundControl {
       position: absolute;
-      top: 50%;
+      top: 0;
       right: 10px;
-      transform: translateY(-50%);
+      height: 100%;
       display: flex;
-      flex-direction: column;
-      align-items: flex-end;
+      align-items: center;
     }
     #highScoreDisplay {
-      margin-bottom: 5px;
+      font-size: 0.7em;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: flex;
+      flex-direction: column;
+      text-align: right;
     }
     #muteButton {
+      position: absolute;
+      top: 60px;
+      right: 10px;
       padding: 6px 10px;
-      font-size: 1rem;
-      background-color: #444;
+      font-size: 1.2rem;
+      background: none;
       color: greenyellow;
       border: none;
-      border-radius: 4px;
       cursor: pointer;
+      z-index: 2000;
     }
 
     /* CANVAS (590px) */
@@ -177,9 +195,7 @@
       color: white;
       overflow: hidden;
       z-index: 1000;
-      display: none; /* important so it doesn't freeze the game at start */
-      
-      /* We'll use flex to space out the top "Game Over" text and bottom actions */
+      display: none;
       flex-direction: column;
       justify-content: space-between;
       align-items: center;
@@ -192,10 +208,20 @@
       height: 100%;
       object-fit: cover;
       z-index: 0;
-      pointer-events: none; /* so the video doesn't block button clicks */
+      pointer-events: none;
     }
-
-    /* Title near the top */
+    #leaderboardButton {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      background: none;
+      border: none;
+      color: gold;
+      cursor: pointer;
+      z-index: 1;
+    }
     #gameOverMessage {
       position: relative;
       z-index: 1;
@@ -203,8 +229,6 @@
       margin-top: 50px;
       text-align: center;
     }
-
-    /* The container for the image preview + buttons near the bottom */
     #gameOverActions {
       position: relative;
       z-index: 1;
@@ -213,19 +237,55 @@
       align-items: center;
       margin-bottom: 50px;
     }
-
-    /* The share card preview image */
     #shareCardPreview {
       max-width: 80%;
       border: 2px solid #fff;
       margin: 10px 0;
       display: none;
     }
-
     #gameOverActions button {
       margin: 5px;
       padding: 10px 20px;
       font-size: 1.2em;
+    }
+
+    /* LEADERBOARD overlay – hidden by default */
+    #leaderboardScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    #leaderboardContent {
+      text-align: center;
+      max-height: 80%;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    #leaderboardContent h2 {
+      margin-bottom: 20px;
+    }
+    #leaderboardContent p {
+      font-size: 1.2em;
+      margin: 5px 0;
+    }
+    #closeLeaderboardButton {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #444;
+      color: greenyellow;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -234,12 +294,20 @@
     <!-- Header -->
     <div id="header">
       <img id="userAvatar" src="default-avatar.png" alt="Profile">
-      <div id="scoreDisplay">Score: 0</div>
+      <div id="scoreDisplay">
+        <span id="currentUsername">Player</span>
+        <span id="currentScore">Score: 0</span>
+      </div>
       <div id="soundControl">
-        <div id="highScoreDisplay">High Score: 0</div>
-        <button id="muteButton">Sound ON</button>
+        <div id="highScoreDisplay">
+          <span id="highScoreUsername">None</span>
+          <span id="highScore">High: 0</span>
+        </div>
       </div>
     </div>
+
+    <!-- Sound Button (standalone, on canvas) -->
+    <button id="muteButton">🔊</button>
 
     <!-- Canvas -->
     <canvas id="gameCanvas" width="400" height="600"></canvas>
@@ -257,7 +325,6 @@
 
     <!-- Start Screen -->
     <div id="startScreen">
-      <!-- ADDED 'autoplay' here -->
       <video id="startVideo" loop muted playsinline autoplay>
         <source src="assets/start.mp4" type="video/mp4">
       </video>
@@ -267,22 +334,26 @@
     </div>
 
     <!-- Game Over Screen -->
-    <div id="gameOverScreen">
-      <!-- ADDED 'autoplay' here -->
-      <video id="gameOverVideo" loop muted playsinline autoplay>
-        <source src="assets/gameOver.mp4" type="video/mp4">
-      </video>
+<div id="gameOverScreen">
+  <video id="gameOverVideo" loop muted playsinline autoplay>
+    <source src="assets/gameOver.mp4" type="video/mp4">
+  </video>
+  <button id="leaderboardButton">🏆</button>
+  <h1 id="gameOverMessage">Game Over</h1>
+  <div id="gameOverActions">
+    <img id="shareCardPreview" src="" alt="Share Card Preview">
+    <button id="gameOverOkButton">Try Again</button>
+    <button id="copyScoreButton">Copy</button>
+    <button id="shareToChatButton">Share to Chat</button>
+  </div>
+</div>
 
-      <h1 id="gameOverMessage">Game Over</h1>
-
-      <div id="gameOverActions">
-        <!-- Preview image (generated at runtime) -->
-        <img id="shareCardPreview" src="" alt="Share Card Preview">
-
-        <!-- Buttons near the bottom -->
-        <button id="gameOverOkButton">Try Again</button>
-        <!-- REPLACED "Copy Image" with "Share Score" -->
-        <button id="shareScoreButton">Share Score</button>
+    <!-- Leaderboard Screen -->
+    <div id="leaderboardScreen">
+      <div id="leaderboardContent">
+        <h2>🏆 Leaderboard (Top 10) 🏆</h2>
+        <div id="leaderboardList"></div>
+        <button id="closeLeaderboardButton">Close</button>
       </div>
     </div>
   </div>
