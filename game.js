@@ -5,8 +5,8 @@ import { getRandomInt } from './utils.js';
 import { Obstacle } from './obstacle.js';
 
 // Telegram bot webhook URL
-const TELEGRAM_BOT_URL = "https://144.202.20.103:443/update_score";
-const HIGH_SCORE_URL = "https://144.202.20.103:443/get_high_score";
+const TELEGRAM_BOT_URL = "https://goobi.vercel.app/api/update_score";
+const HIGH_SCORE_URL = "https://goobi.vercel.app/api/get_high_score";
 
 // Load background tilenan
 const tileImg = new Image();
