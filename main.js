@@ -111,8 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeLeaderboardButton = document.getElementById('closeLeaderboardButton');
 
   async function fetchLeaderboard() {
-    console.log('Fetching leaderboard from: https://144.202.20.103:443/get_leaderboard');
-    const response = await fetch('https://144.202.20.103:443/get_leaderboard');
+    console.log('Fetching leaderboard from: https://goobi.vercel.app/api/get_leaderboard');
+    const response = await fetch('https://goobi.vercel.app/api/get_leaderboard');
     console.log('Leaderboard fetch response:', response);
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
