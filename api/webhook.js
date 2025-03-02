@@ -52,7 +52,7 @@ bot.on('inline_query', async (ctx) => {
           type: 'article',
           id: 'play',
           title: 'Play Goobi',
-          description: 'Inline article with thumbnail',
+          description: 'Click to Launch Goobi',
           thumb_url: thumbUrl,
           thumb_width: 50,
           thumb_height: 50,
