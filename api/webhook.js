@@ -41,34 +41,39 @@ bot.command('start', async (ctx) => {
  * This approach is known to work reliably if inline mode is enabled.
  */
 bot.on('inline_query', async (ctx) => {
-  try {
-    console.log('Processing inline query:', ctx.inlineQuery?.query);
-
-    // We ignore the actual query text, just show "Play Goobi"
-    const results = [
-      {
-        type: 'article',
-        id: 'play',
-        title: 'Play Goobi',
-        input_message_content: {
-          message_text: 'Click to play Goobi: t.me/goobigamebot/goobi'
-        },
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: 'Play Goobi', url: 't.me/goobigamebot/goobi' }
+    try {
+      console.log('Processing inline query:', ctx.inlineQuery?.query);
+  
+      // Suppose you have inlinePhoto.png in /assets
+      const thumbUrl = 'https://goobi.vercel.app/assets/inlinePhoto.png';
+  
+      const results = [
+        {
+          type: 'article',
+          id: 'play',
+          title: 'Play Goobi',
+          description: 'Inline article with thumbnail',
+          thumb_url: thumbUrl,
+          thumb_width: 50,
+          thumb_height: 50,
+          input_message_content: {
+            message_text: 'Click to play Goobi: t.me/goobigamebot/goobi'
+          },
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: 'Play Goobi', url: 't.me/goobigamebot/goobi' }
+              ]
             ]
-          ]
+          }
         }
-      }
-    ];
-
-    // Return the single "article" result
-    await ctx.answerInlineQuery(results);
-  } catch (err) {
-    console.error('Error in inline query:', err);
-  }
-});
+      ];
+  
+      await ctx.answerInlineQuery(results);
+    } catch (err) {
+      console.error('Error in inline query:', err);
+    }
+  });
 
 /**
  * Vercel serverless function entry point
