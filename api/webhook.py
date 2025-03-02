@@ -13,9 +13,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Environment variables
-# At the top
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-logger.info(f"Using token: {TOKEN[:6]}...") 
+logger.info(f"Using token: {TOKEN[:6]}...")  # Log token prefix for debug
 WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://goobi.vercel.app")
 WEBHOOK_URL = "https://goobi.vercel.app/api/webhook"
 SCORE_API_URL = "https://goobi.vercel.app/api/update_score"
@@ -185,9 +184,10 @@ app_bot.add_handler(InlineQueryHandler(inline_query))
 loop = asyncio.get_event_loop()
 loop.run_until_complete(app_bot.initialize())
 loop.run_until_complete(app_bot.bot.set_webhook(WEBHOOK_URL))
-logger.info(f"Webhook set to {WEBHOOK_URL}")
+logger.info("Webhook handler initialized")  # Log startup
 
 def handler(request):
+    logger.info("Webhook endpoint hit")  # Log when endpoint is called
     try:
         update_json = request.get_json(force=True)
         update = Update.de_json(update_json, app_bot.bot)
