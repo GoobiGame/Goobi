@@ -5,39 +5,53 @@ import asyncio
 import logging
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, InlineQueryHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Environment variable for your bot token (set in Vercel)
-TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
 # Optional environment variables for your web app URL (defaults to goobi.vercel.app)
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "https://goobi.vercel.app/api/webhook")
 WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://goobi.vercel.app")
 
-# Initialize the Telegram bot application.
-app_bot = Application.builder().token(TOKEN).build()
+# Initialize the Telegram bot in local mode to avoid built-in server issues
+app_bot = (
+    Application.builder()
+    .token(TOKEN)
+    .local_mode(True)  # <-- This is critical to prevent 'issubclass() arg 1 must be a class' errors
+    .build()
+)
 
-# Define your command handlers (e.g. /start)
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+# /start command
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info("Processing /start command")
     keyboard = [
         [InlineKeyboardButton("Play Goobi", web_app={"url": WEBAPP_URL})]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "Welcome to GoobiBot! Click below to play or use @goobigamebot in any chat for inline features:",
+        "Welcome to GoobiBot on Vercel! Type /score or /leaderboard for more.",
         reply_markup=reply_markup
     )
 
-# Add the /start command handler:
-app_bot.add_handler(CommandHandler("start", start))
+# /score command (placeholder logic)
+async def score(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info("Processing /score command")
+    # TODO: Insert real scoreboard logic or call separate endpoint here.
+    await update.message.reply_text("Your current score is: (placeholder)")
 
-# (Optionally add other handlers here: /me, /addscore, /leaderboard, etc.)
-# e.g., app_bot.add_handler(CommandHandler("leaderboard", leaderboard))
-# app_bot.add_handler(InlineQueryHandler(inline_query))
+# /leaderboard command (placeholder logic)
+async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info("Processing /leaderboard command")
+    # TODO: Insert real leaderboard logic or call separate endpoint here.
+    await update.message.reply_text("Top players:\n1. Alice (100)\n2. Bob (50)\n(placeholder)")
+
+# Register the command handlers
+app_bot.add_handler(CommandHandler("start", start))
+app_bot.add_handler(CommandHandler("score", score))
+app_bot.add_handler(CommandHandler("leaderboard", leaderboard))
 
 def handler(request):
     """
