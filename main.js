@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         headerAvatar.src = user.photo_url;
         headerAvatar.onerror = () => {
           console.error('Failed to load Telegram PFP:', user.photo_url);
+          // The header fallback is assets/card.png
           headerAvatar.src = 'assets/card.png';
         };
       } else if (headerAvatar) {
@@ -110,8 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
     shareToChatButton.addEventListener('click', shareScoreToChat);
   }
 });
-
-// Removed all references to a leaderboard or fetch calls for it.
 
 function scaleGame() {
   const gameWrapper = document.getElementById('gameWrapper');
@@ -171,7 +170,9 @@ function generateShareCardDataURL() {
       ctx.fillRect(pfpX, pfpY, pfpSize, pfpSize);
 
       const pfpImg = new Image();
-      pfpImg.crossOrigin = 'Anonymous';
+      pfpImg.crossOrigin = 'anonymous';
+      pfpImg.referrerPolicy = 'no-referrer';
+
       console.log('Attempting to load PFP from:', document.getElementById('userAvatar').src);
       pfpImg.src = document.getElementById('userAvatar').src;
 
@@ -181,11 +182,25 @@ function generateShareCardDataURL() {
         renderText();
       };
 
+      // Fallback to the same fallback the header uses: assets/card.png
       pfpImg.onerror = (err) => {
         console.error('PFP failed to load:', pfpImg.src, err);
-        ctx.fillStyle = '#666';
-        ctx.fillRect(pfpX, pfpY, pfpSize, pfpSize);
-        renderText();
+        const fallbackImg = new Image();
+        fallbackImg.crossOrigin = 'anonymous';
+        fallbackImg.referrerPolicy = 'no-referrer';
+        fallbackImg.src = 'assets/card.png'; // same fallback as the header
+
+        fallbackImg.onload = () => {
+          console.log('Falling back to assets/card.png for PFP');
+          ctx.drawImage(fallbackImg, pfpX, pfpY, pfpSize, pfpSize);
+          renderText();
+        };
+        fallbackImg.onerror = () => {
+          // If fallback also fails, draw a gray square
+          ctx.fillStyle = '#666';
+          ctx.fillRect(pfpX, pfpY, pfpSize, pfpSize);
+          renderText();
+        };
       };
 
       function renderText() {
