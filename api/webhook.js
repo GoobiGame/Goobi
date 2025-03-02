@@ -1,11 +1,9 @@
 import { Telegraf } from 'telegraf';
-import { message } from 'telegraf/filters';
-import { InlineKeyboardMarkup, InlineKeyboardButton } from 'telegraf/types'; // optional for types
 
-// 1) Access your bot token from environment
+// 1) Environment variables
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const WEBAPP_URL = 'https://goobi.vercel.app'; // your mini app front-end
-const BOT_USERNAME = 'goobigamebot'; // your bot's username (without @)
+const WEBAPP_URL = 'https://goobi.vercel.app'; // Your mini app front-end
+const BOT_USERNAME = 'goobigamebot'; // Your bot's username (without @)
 
 // 2) Create Telegraf bot instance
 const bot = new Telegraf(TOKEN);
@@ -30,33 +28,35 @@ bot.command('start', async (ctx) => {
   }
 });
 
-// 4) Inline query: show a single “Play Goobi” result
+// 4) Inline query: return one “photo” result
 bot.on('inline_query', async (ctx) => {
   try {
     console.log('Processing inline query:', ctx.inlineQuery?.query);
-    const queryText = (ctx.inlineQuery?.query || '').toLowerCase().trim();
 
-    // We ignore the user's actual query for now, just show “Play Goobi”
+    // Full domain for your deployed Vercel project
+    // e.g. 'https://goobi.vercel.app'
+    const fullDomain = 'https://goobi.vercel.app';
+
+    // The main photo and thumbnail stored in /assets
+    // Replace these filenames with yours if needed
+    const photoUrl = `${fullDomain}/assets/inlinePhoto.png`;
+    const thumbUrl = `${fullDomain}/assets/thumbImage.png`;
+
+    // Build a single photo result
     const results = [
       {
-        type: 'article',
-        id: 'play',
-        title: 'Play Goobi',
-        input_message_content: {
-          message_text: 'Click to play Goobi: t.me/goobigamebot/goobi'
-        },
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: 'Play Goobi', url: 't.me/goobigamebot/goobi' }
-            ]
-          ]
-        }
+        type: 'photo',
+        id: 'photo-1',
+        photo_url: photoUrl,
+        thumb_url: thumbUrl,
+        caption: 'Inline photo from the assets folder!'
       }
     ];
+
+    // Send the results to Telegram
     await ctx.answerInlineQuery(results);
   } catch (err) {
-    console.error('Error in inline query:', err);
+    console.error('Error in inline query with photo:', err);
   }
 });
 
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
   }
 }
 
-// 6) We can disable Next.js body parsing if using Next's built-in routes
+// 6) Disable body parsing if using Next.js-style routes (optional)
 export const config = {
   api: {
     bodyParser: false
