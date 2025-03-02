@@ -1,18 +1,23 @@
 # /api/get_leaderboard.py
 import os
+import json
 import sqlite3
-from flask import jsonify
 
 DB_PATH = "/tmp/scoreboard.db"
 
 def handler(request):
+    """
+    Returns a JSON array of objects:
+    [ { "username": "...", "score": <number> }, ... ]
+    for the top 10 ephemeral scores.
+    """
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
 
-        # If the table doesn't exist yet, create it
-        c.execute('''CREATE TABLE IF NOT EXISTS scores
-                     (username TEXT PRIMARY KEY, high_score INTEGER)''')
+        # Create table if doesn't exist
+        c.execute("""CREATE TABLE IF NOT EXISTS scores
+                     (username TEXT PRIMARY KEY, high_score INTEGER)""")
 
         c.execute("SELECT username, high_score FROM scores ORDER BY high_score DESC LIMIT 10")
         rows = c.fetchall()
@@ -20,9 +25,15 @@ def handler(request):
 
         leaderboard = []
         for row in rows:
-            leaderboard.append({'username': row[0], 'score': row[1]})
+            leaderboard.append({"username": row[0], "score": row[1]})
 
-        return jsonify(leaderboard), 200
+        return {
+            "statusCode": 200,
+            "body": json.dumps(leaderboard)
+        }
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": str(e)})
+        }

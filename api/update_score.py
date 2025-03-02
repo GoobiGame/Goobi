@@ -2,28 +2,34 @@
 import os
 import json
 import sqlite3
-from flask import jsonify
 
 DB_PATH = "/tmp/scoreboard.db"
 
 def handler(request):
+    """
+    Receives JSON { "username": "...", "points": <number> }
+    Updates ephemeral scoreboard in /tmp/scoreboard.db
+    """
     try:
         data = request.get_json(force=True)
-        username = data.get('username')
-        points = data.get('points', 0)
+        username = data.get("username")
+        points = data.get("points", 0)
 
         if not username or not isinstance(points, (int, float)):
-            return jsonify({'error': 'Invalid data'}), 400
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "Invalid data"})
+            }
 
         points = int(points)
 
-        # Open or create the DB in /tmp
+        # Connect to ephemeral DB in /tmp
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
 
-        # Create table if not exists
-        c.execute('''CREATE TABLE IF NOT EXISTS scores
-                     (username TEXT PRIMARY KEY, high_score INTEGER)''')
+        # Create table if doesn't exist
+        c.execute("""CREATE TABLE IF NOT EXISTS scores
+                     (username TEXT PRIMARY KEY, high_score INTEGER)""")
 
         # Check current high score
         c.execute("SELECT high_score FROM scores WHERE username = ?", (username,))
@@ -32,13 +38,19 @@ def handler(request):
 
         # Update if new score is higher
         if points > current_high:
-            c.execute("INSERT OR REPLACE INTO scores (username, high_score) VALUES (?, ?)",
-                      (username, points))
+            c.execute("""INSERT OR REPLACE INTO scores (username, high_score)
+                         VALUES (?, ?)""", (username, points))
             conn.commit()
 
         conn.close()
 
-        return jsonify({'message': 'Score updated'}), 200
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"message": "Score updated"})
+        }
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": str(e)})
+        }
