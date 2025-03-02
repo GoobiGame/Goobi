@@ -3,12 +3,9 @@ import { Platform, generatePlatforms } from './platform.js';
 import { setupControls } from './controls.js';
 import { getRandomInt } from './utils.js';
 import { Obstacle } from './obstacle.js';
+import { ScoreManager } from './scoreManager.js'; // Local high score logic
 
-// Telegram bot webhook URL
-const TELEGRAM_BOT_URL = "https://goobi.vercel.app/api/update_score";
-const HIGH_SCORE_URL = "https://goobi.vercel.app/api/get_high_score";
-
-// Load background tilenan
+// Load background tile
 const tileImg = new Image();
 tileImg.src = "assets/backgroundTile.svg";
 
@@ -55,33 +52,27 @@ export function startGame(telegramData = {}) {
     return Math.random() * (max - min) + min;
   }
 
+  // DOM elements for score display
   const currentUsername = document.getElementById("currentUsername");
   const currentScore = document.getElementById("currentScore");
   const highScoreUsername = document.getElementById("highScoreUsername");
   const highScore = document.getElementById("highScore");
 
+  // Set initial UI
   currentUsername.textContent = `@${playerUsername}`;
   currentScore.textContent = `Score: 0`;
 
-  // Fetch chat-wide high score with retries
-  fetchChatHighScoreWithRetry().then(data => {
-    if (data && data.username) {
-      highScoreUsername.textContent = `@${data.username}`;
-      highScore.textContent = `High: ${data.score}`;
-    } else {
-      highScoreUsername.textContent = `None`;
-      highScore.textContent = `High: 0`;
-    }
-  }).catch(error => {
-    console.error('Error fetching high score:', error);
-    highScoreUsername.textContent = `N/A`;
-    highScore.textContent = `High: N/A`;
-  });
+  // Load local high score
+  const localHigh = ScoreManager.getHighScore();
+  highScoreUsername.textContent = ``;              // Blank out the label
+  highScore.textContent = `High Score: ${localHigh}`;  // Just says "High Score"
 
+  // Game Over elements
   const gameOverScreen = document.getElementById("gameOverScreen");
   const gameOverOkButton = document.getElementById("gameOverOkButton");
   const gameOverVideo = document.getElementById("gameOverVideo");
 
+  // Refresh the Try Again button
   gameOverOkButton.replaceWith(gameOverOkButton.cloneNode(true));
   const newGameOverOkButton = document.getElementById("gameOverOkButton");
 
@@ -101,6 +92,7 @@ export function startGame(telegramData = {}) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Draw tiled background
     if (tilePattern) {
       const offset = (cameraY * PARALLAX_FACTOR) % SCALED_TILE_SIZE;
       ctx.save();
@@ -113,6 +105,7 @@ export function startGame(telegramData = {}) {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // Camera logic
     if (player.y < canvas.height / 2) {
       const distanceMoved = Math.abs(player.dy) * delta;
       player.y += distanceMoved;
@@ -130,13 +123,14 @@ export function startGame(telegramData = {}) {
     }
     score = Math.floor(highestWorldY);
 
+    // Update UI score if changed
     if (score !== lastScore) {
       currentScore.textContent = `Score: ${score}`;
       lastScore = score;
     }
 
+    // Maintain platform count
     platforms = platforms.filter(p => p.y < canvas.height);
-
     while (platforms.length < 10) {
       const width = getRandomInt(50, 100);
       const x = getRandomInt(0, canvas.width - width);
@@ -148,18 +142,20 @@ export function startGame(telegramData = {}) {
       if (y > canvas.height - 50) {
         continue;
       }
-
       platforms.push(new Platform(x, y, width, 20, isMoving, isDropping));
     }
 
+    // Update & draw player
     player.update(platforms, canvas.width, delta);
     player.draw(ctx);
 
+    // Update & draw platforms
     platforms.forEach(platform => {
       platform.update(player, canvas.width, delta);
       platform.draw(ctx);
     });
 
+    // Spawn obstacles
     obstacleSpawnTimer += delta;
     if (obstacleSpawnTimer >= nextSpawnInterval) {
       obstacleSpawnTimer = 0;
@@ -172,10 +168,12 @@ export function startGame(telegramData = {}) {
       nextSpawnInterval = getRandomFloat(3.0, 7.0);
     }
 
+    // Update & draw obstacles
     obstacles.forEach(obstacle => obstacle.update(delta));
     obstacles = obstacles.filter(obstacle => obstacle.y < canvas.height + obstacle.height);
     obstacles.forEach(obstacle => obstacle.draw(ctx));
 
+    // Collision check
     for (let obstacle of obstacles) {
       if (obstacle.collidesWith(player)) {
         handleGameOver();
@@ -183,6 +181,7 @@ export function startGame(telegramData = {}) {
       }
     }
 
+    // If player falls off screen
     if (player.y > canvas.height) {
       handleGameOver();
       return;
@@ -193,59 +192,20 @@ export function startGame(telegramData = {}) {
 
   requestAnimationFrame(gameLoop);
 
-  async function fetchChatHighScore() {
-    console.log('Fetching chat high score from:', HIGH_SCORE_URL);
-    try {
-      const response = await fetch(HIGH_SCORE_URL);
-      console.log('High score fetch response:', response);
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log('High score data:', data);
-      return data;
-    } catch (error) {
-      console.error('Error fetching high score:', error);
-      throw error;
-    }
-  }
-
-  async function fetchChatHighScoreWithRetry(retries = 3, delay = 1000) {
-    for (let i = 0; i < retries; i++) {
-      try {
-        return await fetchChatHighScore();
-      } catch (error) {
-        if (i === retries - 1) {
-          console.error('All retries failed, returning default value');
-          return { username: null, score: 0 }; // Fallback to default
-        }
-        console.log(`Retrying fetchChatHighScore (${i + 1}/${retries})...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-
-  async function sendScoreToTelegram(username, points) {
-    console.log(`Attempting to send score: ${username} - ${points}`);
-    try {
-      const response = await fetch(TELEGRAM_BOT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, points })
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      console.log(`Score sent to Telegram: ${username} - ${points}`);
-    } catch (error) {
-      console.error('Error sending score to Telegram:', error);
-    }
-  }
-
   function handleGameOver() {
     window.finalScore = score;
-    window.isNewHighScore = newHighScoreAchieved;
 
+    // Update local high score
+    const prevHigh = ScoreManager.getHighScore();
+    if (score > prevHigh) {
+      newHighScoreAchieved = true;
+      ScoreManager.updateHighScore(score);
+      console.log("New local high score!");
+    } else {
+      newHighScoreAchieved = false;
+    }
+
+    // Show game over screen
     if (gameOverScreen.style.display !== "flex") {
       gameOverVideo.currentTime = 0;
       gameOverVideo.play();
@@ -253,7 +213,5 @@ export function startGame(telegramData = {}) {
     gameOverScreen.style.display = "flex";
 
     window.updateShareCardPreview();
-
-    sendScoreToTelegram(playerUsername, score);
   }
 }

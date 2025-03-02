@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     muteButton.blur();
   });
 
+  // Prevent default gestures and context menus
   const canvas = document.getElementById('gameCanvas');
   if (canvas) {
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -46,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lastTouchEnd = now;
   }, { passive: false });
 
-  // Telegram user data with PFP fix
+  // Telegram user data
   let finalUsername = 'Player';
   if (window.Telegram && Telegram.WebApp) {
     const user = Telegram.WebApp.initDataUnsafe.user;
@@ -54,13 +55,13 @@ document.addEventListener('DOMContentLoaded', () => {
       finalUsername = user.username || user.first_name || 'Player';
       const headerAvatar = document.getElementById('userAvatar');
       if (headerAvatar && user.photo_url) {
-        headerAvatar.src = user.photo_url;  // Set Telegram photo_url
+        headerAvatar.src = user.photo_url;
         headerAvatar.onerror = () => {
           console.error('Failed to load Telegram PFP:', user.photo_url);
-          headerAvatar.src = 'assets/card.png';  // Fallback
+          headerAvatar.src = 'assets/card.png';
         };
       } else if (headerAvatar) {
-        headerAvatar.src = 'assets/card.png';  // Default if no photo_url
+        headerAvatar.src = 'assets/card.png';
       }
     }
   } else {
@@ -68,12 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
     finalUsername = urlParams.get('username') || 'Player';
     const headerAvatar = document.getElementById('userAvatar');
     if (headerAvatar) {
-      headerAvatar.src = 'assets/card.png';  // Default for non-Telegram
+      headerAvatar.src = 'assets/card.png';
     }
   }
   window.telegramData = { username: finalUsername };
   console.log('Telegram Data:', window.telegramData);
 
+  // Start screen logic
   if (sessionStorage.getItem('skipStartScreen') === 'true') {
     startGame(window.telegramData);
   } else {
@@ -97,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Game Over sharing buttons
   const copyScoreButton = document.getElementById('copyScoreButton');
   const shareToChatButton = document.getElementById('shareToChatButton');
 
@@ -106,61 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (shareToChatButton) {
     shareToChatButton.addEventListener('click', shareScoreToChat);
   }
-
-  const leaderboardButton = document.getElementById('leaderboardButton');
-  const leaderboardScreen = document.getElementById('leaderboardScreen');
-  const leaderboardList = document.getElementById('leaderboardList');
-  const closeLeaderboardButton = document.getElementById('closeLeaderboardButton');
-
-  async function fetchLeaderboard() {
-    console.log('Fetching leaderboard from: https://goobi.vercel.app/api/get_leaderboard');
-    const response = await fetch('https://goobi.vercel.app/api/get_leaderboard');
-    console.log('Leaderboard fetch response:', response);
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-    const data = await response.json();
-    console.log('Leaderboard data:', data);
-    return data;
-  }
-
-  async function fetchLeaderboardWithRetry(retries = 3, delay = 1000) {
-    for (let i = 0; i < retries; i++) {
-      try {
-        return await fetchLeaderboard();
-      } catch (error) {
-        if (i === retries - 1) {
-          console.error('All retries failed, returning default value');
-          return [];
-        }
-        console.log(`Retrying fetchLeaderboard (${i + 1}/${retries})...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-
-  leaderboardButton.addEventListener('click', async () => {
-    try {
-      const data = await fetchLeaderboardWithRetry();
-      if (data.length === 0) {
-        leaderboardList.innerHTML = '<p>No scores yet!</p>';
-      } else {
-        leaderboardList.innerHTML = data.map((entry, index) => 
-          `<p>${index + 1}. @${entry.username}: ${entry.score} points</p>`
-        ).join('');
-      }
-      leaderboardScreen.style.display = 'flex';
-    } catch (error) {
-      console.error('Error fetching leaderboard:', error);
-      leaderboardList.innerHTML = '<p>Error loading leaderboard</p>';
-      leaderboardScreen.style.display = 'flex';
-    }
-  });
-
-  closeLeaderboardButton.addEventListener('click', () => {
-    leaderboardScreen.style.display = 'none';
-  });
 });
+
+// Removed all references to a leaderboard or fetch calls for it.
 
 function scaleGame() {
   const gameWrapper = document.getElementById('gameWrapper');
@@ -183,7 +134,7 @@ function scaleGame() {
 
 window.addEventListener('resize', scaleGame);
 
-window.shareCardDataURL = null;
+/* share card logic remains unchanged below */
 
 function drawCenteredText(ctx, text, y, font, fillStyle) {
   ctx.font = font;
@@ -212,6 +163,7 @@ function generateShareCardDataURL() {
       const finalScore = window.finalScore ?? 0;
       const newHigh = window.isNewHighScore === true;
 
+      // Draw placeholder for PFP
       ctx.fillStyle = '#444';
       const pfpSize = 200;
       const pfpX = (canvas.width - pfpSize) / 2;
