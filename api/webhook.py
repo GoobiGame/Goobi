@@ -13,7 +13,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Environment variables
+# At the top
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+logger.info(f"Using token: {TOKEN[:6]}...") 
 WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://goobi.vercel.app")
 WEBHOOK_URL = "https://goobi.vercel.app/api/webhook"
 SCORE_API_URL = "https://goobi.vercel.app/api/update_score"
