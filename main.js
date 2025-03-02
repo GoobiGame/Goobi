@@ -2,21 +2,20 @@ import { startGame } from './game.js';
 import { AudioManager } from './audioManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1) If Telegram is available, force it to expand (for full height)
+  console.log('DOMContentLoaded fired');
   if (window.Telegram && Telegram.WebApp) {
+    console.log('Telegram WebApp available. Init Data:', Telegram.WebApp.initDataUnsafe);
     Telegram.WebApp.expand();
-
-    // 2) Listen for viewport changes (e.g., user drags the mini app up)
     Telegram.WebApp.onEvent('viewportChanged', () => {
       Telegram.WebApp.expand();
       scaleGame();
     });
+  } else {
+    console.log('Not in Telegram context - Telegram.WebApp unavailable');
   }
 
-  // 3) Run scaleGame on load
   scaleGame();
 
-  // 4) Audio
   const audioManager = new AudioManager('assets/themeMusic.wav');
   audioManager.play().catch((err) => {
     console.log('Autoplay blocked:', err);
@@ -29,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     muteButton.blur();
   });
 
-  // 5) Prevent pinch-zoom, context menu, etc.
   const canvas = document.getElementById('gameCanvas');
   if (canvas) {
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -48,28 +46,34 @@ document.addEventListener('DOMContentLoaded', () => {
     lastTouchEnd = now;
   }, { passive: false });
 
-  // 6) Telegram user data
+  // Telegram user data with PFP fix
   let finalUsername = 'Player';
   if (window.Telegram && Telegram.WebApp) {
     const user = Telegram.WebApp.initDataUnsafe.user;
     if (user) {
       finalUsername = user.username || user.first_name || 'Player';
-      if (user.photo_url) {
-        const headerAvatar = document.getElementById('userAvatar');
-        if (headerAvatar) {
-          headerAvatar.src = user.photo_url;
-        }
+      const headerAvatar = document.getElementById('userAvatar');
+      if (headerAvatar && user.photo_url) {
+        headerAvatar.src = user.photo_url;  // Set Telegram photo_url
+        headerAvatar.onerror = () => {
+          console.error('Failed to load Telegram PFP:', user.photo_url);
+          headerAvatar.src = 'assets/card.png';  // Fallback
+        };
+      } else if (headerAvatar) {
+        headerAvatar.src = 'assets/card.png';  // Default if no photo_url
       }
     }
   } else {
-    // Fallback for non-Telegram environments (e.g., direct browser access)
     const urlParams = new URLSearchParams(window.location.search);
     finalUsername = urlParams.get('username') || 'Player';
+    const headerAvatar = document.getElementById('userAvatar');
+    if (headerAvatar) {
+      headerAvatar.src = 'assets/card.png';  // Default for non-Telegram
+    }
   }
   window.telegramData = { username: finalUsername };
   console.log('Telegram Data:', window.telegramData);
 
-  // 7) Start screen logic
   if (sessionStorage.getItem('skipStartScreen') === 'true') {
     startGame(window.telegramData);
   } else {
@@ -93,7 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 8) Hook up the new buttons
   const copyScoreButton = document.getElementById('copyScoreButton');
   const shareToChatButton = document.getElementById('shareToChatButton');
 
@@ -104,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     shareToChatButton.addEventListener('click', shareScoreToChat);
   }
 
-  // 9) Hook up the leaderboard button
   const leaderboardButton = document.getElementById('leaderboardButton');
   const leaderboardScreen = document.getElementById('leaderboardScreen');
   const leaderboardList = document.getElementById('leaderboardList');
@@ -210,7 +212,6 @@ function generateShareCardDataURL() {
       const finalScore = window.finalScore ?? 0;
       const newHigh = window.isNewHighScore === true;
 
-      // Draw placeholder PFP area
       ctx.fillStyle = '#444';
       const pfpSize = 200;
       const pfpX = (canvas.width - pfpSize) / 2;
