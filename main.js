@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Telegram user data
   let finalUsername = 'Player';
   if (window.Telegram && Telegram.WebApp) {
-    const user = Telegram.WebApp.initDataUnsafe.user;
+    const user = window.Telegram.WebApp.initDataUnsafe.user;
     if (user) {
       finalUsername = user.username || user.first_name || 'Player';
       const headerAvatar = document.getElementById('userAvatar');
@@ -163,37 +163,27 @@ function generateShareCardDataURL() {
       const finalScore = window.finalScore ?? 0;
       const newHigh = window.isNewHighScore === true;
 
-      // Draw placeholder for PFP
-      ctx.fillStyle = '#444';
+      // Removed the "gray square" placeholder entirely
+      // so the scoreboard background shows through
+
       const pfpSize = 200;
       const pfpX = (canvas.width - pfpSize) / 2;
       const pfpY = 50;
-      ctx.fillRect(pfpX, pfpY, pfpSize, pfpSize);
 
       const pfpImg = new Image();
       pfpImg.crossOrigin = 'anonymous';
       pfpImg.referrerPolicy = 'no-referrer';
 
-      // ...
       console.log('Attempting to load PFP from:', document.getElementById('userAvatar').src);
-
-      // Instead of direct link to Telegram, we route through our proxy
-      const userAvatarUrl = document.getElementById('userAvatar').src;
-      pfpImg.src = '/api/proxyPhoto?url=' + encodeURIComponent(userAvatarUrl);
+      pfpImg.src = '/api/proxyPhoto?url=' + encodeURIComponent(document.getElementById('userAvatar').src);
 
       pfpImg.onload = () => {
         console.log('PFP loaded successfully via proxy:', pfpImg.src);
         ctx.drawImage(pfpImg, pfpX, pfpY, pfpSize, pfpSize);
         renderText();
-       };
-
-      pfpImg.onerror = (err) => {
-        console.error('PFP failed to load via proxy:', pfpImg.src, err);
-      
       };
 
-
-      // If the player's PFP fails, fallback to avatarFallback.png
+      // If player's PFP fails, we fallback to avatarFallback.png
       pfpImg.onerror = (err) => {
         console.error('PFP failed to load:', pfpImg.src, err);
         const fallbackImg = new Image();
@@ -207,9 +197,8 @@ function generateShareCardDataURL() {
           renderText();
         };
         fallbackImg.onerror = () => {
-          // If fallback also fails, just draw a gray square
-          ctx.fillStyle = '#666';
-          ctx.fillRect(pfpX, pfpY, pfpSize, pfpSize);
+          // If fallback also fails, we do nothing
+          console.log('Even fallback image failed, leaving area transparent');
           renderText();
         };
       };
