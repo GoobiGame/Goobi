@@ -5,7 +5,7 @@ const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const bot = new Telegraf(TOKEN);
 
 // 2) The short name from BotFather, e.g. "goobi_game"
-const GAME_SHORT_NAME = 'GOOBI_GAME';
+const GAME_SHORT_NAME = 'goobi';
 // 3) The actual URL to your new index.html
 const GAME_URL = 'https://goobi.vercel.app';
 
