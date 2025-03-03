@@ -23,11 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Call scaleGame() once immediately
   scaleGame();
 
-  // *** NEW ***: Call scaleGame() again after a short delay to fix layout on Telegram mobile
-  setTimeout(() => {
-    console.log('Delayed scaleGame() call...');
-    scaleGame();
-  }, 300);
+
+setTimeout(() => {
+  Telegram.WebApp.expand();
+  scaleGame();
+}, 300);
 
   // Audio setup
   const audioManager = new AudioManager('assets/themeMusic.wav');
