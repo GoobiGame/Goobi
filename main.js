@@ -3,9 +3,15 @@ import { AudioManager } from './audioManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded fired');
+
+  // Check Telegram WebApp context
   if (window.Telegram && Telegram.WebApp) {
     console.log('Telegram WebApp available. Init Data:', Telegram.WebApp.initDataUnsafe);
+
+    // Expand the WebApp to full height
     Telegram.WebApp.expand();
+
+    // Listen for viewport changes, re-expand
     Telegram.WebApp.onEvent('viewportChanged', () => {
       Telegram.WebApp.expand();
       scaleGame();
@@ -14,13 +20,22 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Not in Telegram context - Telegram.WebApp unavailable');
   }
 
+  // Call scaleGame() once immediately
   scaleGame();
 
+  // *** NEW ***: Call scaleGame() again after a short delay to fix layout on Telegram mobile
+  setTimeout(() => {
+    console.log('Delayed scaleGame() call...');
+    scaleGame();
+  }, 300);
+
+  // Audio setup
   const audioManager = new AudioManager('assets/themeMusic.wav');
   audioManager.play().catch((err) => {
     console.log('Autoplay blocked:', err);
   });
 
+  // Mute button
   const muteButton = document.getElementById('muteButton');
   muteButton.addEventListener('click', () => {
     audioManager.toggleMute();
@@ -100,13 +115,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Only one button now: shareToChatButton
+  // The only button now is "shareToChatButton" (if you removed the copy button from HTML)
   const shareToChatButton = document.getElementById('shareToChatButton');
   if (shareToChatButton) {
     shareToChatButton.addEventListener('click', shareScoreToChat);
   }
 });
 
+/**
+ * Scales the #gameWrapper to fit the screen
+ */
 function scaleGame() {
   const gameWrapper = document.getElementById('gameWrapper');
   const gameWidth = 400;
@@ -128,7 +146,7 @@ function scaleGame() {
 
 window.addEventListener('resize', scaleGame);
 
-/* share card logic remains if you still want a scoreboard preview */
+/* share card logic remains if you want the scoreboard preview */
 
 function drawCenteredText(ctx, text, y, font, fillStyle) {
   ctx.font = font;
@@ -174,6 +192,7 @@ function generateShareCardDataURL() {
         renderText();
       };
 
+      // If player's PFP fails, fallback to avatarFallback
       pfpImg.onerror = (err) => {
         console.error('PFP failed to load:', pfpImg.src, err);
         const fallbackImg = new Image();
