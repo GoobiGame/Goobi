@@ -3,31 +3,39 @@ import { Telegraf } from 'telegraf';
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const bot = new Telegraf(TOKEN);
 
-// Your short name from BotFather, e.g. "goobi"
+// 1) Your short name from BotFather
 const GAME_SHORT_NAME = 'goobi';
-// Your game URL where index.html is hosted
+// 2) URL to your index.html
 const GAME_URL = 'https://goobi.vercel.app';
 
-// We'll store (chat_id, message_id) for each user in memory
+// We'll store data in memory keyed by userId, e.g. { chatId, messageId, inlineId }
 const cachedGameMessage = {};
 
 /**
- * /start command
- * Sends the game message with replyWithGame(short_name).
- * We store the chat_id & message_id for setGameScore later.
+ * /start command:
+ *  - If it's a normal chat (private/group), replyWithGame returns { chat: { id }, message_id }
+ *  - If for some reason it doesn't, we'll see what we get in "sentMsg"
  */
 bot.command('start', async (ctx) => {
   try {
     console.log('Processing /start command');
 
-    // 1) Send the game message
     const sentMsg = await ctx.replyWithGame(GAME_SHORT_NAME);
 
-    // 2) Store chat_id & message_id in memory, keyed by userId
-    cachedGameMessage[ctx.from.id] = {
-      chatId: sentMsg.chat.id,
-      messageId: sentMsg.message_id
-    };
+    // Let's log what we got
+    console.log('sentMsg =', sentMsg);
+
+    // If it's a normal message, we get sentMsg.chat.id and sentMsg.message_id
+    if (sentMsg && sentMsg.chat && sentMsg.message_id) {
+      cachedGameMessage[ctx.from.id] = {
+        chatId: sentMsg.chat.id,
+        messageId: sentMsg.message_id
+      };
+      console.log(`Stored chatId=${sentMsg.chat.id}, messageId=${sentMsg.message_id}`);
+    } else {
+      // Possibly we got something else, or no chat
+      console.log('No valid chat/message_id in sentMsg; might be inline context or an error');
+    }
   } catch (err) {
     console.error('Error in /start command:', err);
     await ctx.reply('Something went wrong with /start.');
@@ -35,9 +43,9 @@ bot.command('start', async (ctx) => {
 });
 
 /**
- * callback_query for the game:
- *  - Called when user taps "Play <GAME_SHORT_NAME>" in the chat
- *  - We must call answerGameQuery(GAME_URL) quickly (within ~15s).
+ * callback_query:
+ *  - Called when user taps "Play <short_name>" in the chat or inline
+ *  - We must quickly answerGameQuery(GAME_URL) or answerCallbackQuery
  */
 bot.on('callback_query', async (ctx) => {
   try {
@@ -47,7 +55,7 @@ bot.on('callback_query', async (ctx) => {
       // Immediately answer with the game URL
       await ctx.answerGameQuery(GAME_URL);
     } else {
-      // Possibly an unknown short name
+      // Possibly an unknown short name or a different callback
       await ctx.answerCallbackQuery({
         text: 'Unknown game short name',
         show_alert: true
@@ -59,55 +67,12 @@ bot.on('callback_query', async (ctx) => {
 });
 
 /**
- * /setscore <score>
- *  - For testing. Real usage might do an HTTP request from the game code.
- */
-bot.command('setscore', async (ctx) => {
-  try {
-    // e.g. "/setscore 123"
-    const parts = ctx.message.text.split(' ');
-    const newScore = parseInt(parts[1], 10) || 0;
-    const userId = ctx.from.id;
-
-    // Get the stored chat_id & message_id
-    const stored = cachedGameMessage[userId];
-    if (!stored) {
-      return ctx.reply('No game message found for you. Please /start again.');
-    }
-
-    await bot.telegram.setGameScore(
-      userId,
-      newScore,
-      {
-        chat_id: stored.chatId,
-        message_id: stored.messageId,
-        force: true // ensure scoreboard updates even if same/lower
-      },
-      GAME_SHORT_NAME
-    );
-
-    await ctx.reply(
-      `Score of ${newScore} set for @${ctx.from.username || 'user'}. ` +
-      `Check the original game message in chat for "View Results"!`
-    );
-  } catch (err) {
-    console.error('Error in /setscore command:', err);
-    await ctx.reply('Failed to set score.');
-  }
-});
-
-/**
- * Inline query handler:
- *  - Re-add so inline mode works again. 
- *  - This is a minimal example returning a single "game" result 
- *    so user can type "@YourBot" in any chat and see "Play goobi".
+ * inline_query:
+ *  - So inline mode works, returning an inline "game" result
  */
 bot.on('inline_query', async (ctx) => {
   try {
-    const queryText = ctx.inlineQuery?.query || '';
-    console.log('Processing inline query:', queryText);
-
-    // Return an inline "game" result
+    console.log('Processing inline query...');
     const results = [
       {
         type: 'game',
@@ -115,8 +80,6 @@ bot.on('inline_query', async (ctx) => {
         game_short_name: GAME_SHORT_NAME
       }
     ];
-
-    // Respond to the inline query
     await ctx.answerInlineQuery(results);
   } catch (err) {
     console.error('Error in inline_query:', err);
@@ -124,12 +87,84 @@ bot.on('inline_query', async (ctx) => {
 });
 
 /**
- * Vercel serverless function entry point
+ * If the user "plays" inline, Telegram won't send a normal message with chatId.
+ * Instead, it will create an inline message with an inline_message_id.
+ * 
+ * We can detect that in "chosen_inline_result" if we want to store the inline_message_id.
+ */
+bot.on('chosen_inline_result', async (ctx) => {
+  try {
+    console.log('chosen_inline_result =', ctx.chosenInlineResult);
+
+    // We can store the inline_message_id in memory for setGameScore usage
+    const userId = ctx.chosenInlineResult.from.id;
+    const inlineId = ctx.chosenInlineResult.inline_message_id;
+
+    cachedGameMessage[userId] = {
+      inlineId
+    };
+    console.log(`Stored inlineId=${inlineId} for user=${userId}`);
+  } catch (err) {
+    console.error('Error in chosen_inline_result:', err);
+  }
+});
+
+/**
+ * /setscore <score> - for testing
+ *  - We check if we have (chatId, messageId) or inlineId stored
+ *  - Then call setGameScore accordingly
+ */
+bot.command('setscore', async (ctx) => {
+  try {
+    const parts = ctx.message.text.split(' ');
+    const newScore = parseInt(parts[1], 10) || 0;
+    const userId = ctx.from.id;
+
+    const stored = cachedGameMessage[userId];
+    if (!stored) {
+      return ctx.reply('No game message or inline message found. Try /start or inline again.');
+    }
+
+    // We'll see if we have chatId/messageId or inlineId
+    let options = {};
+    if (stored.chatId && stored.messageId) {
+      // Normal chat-based approach
+      options.chat_id = stored.chatId;
+      options.message_id = stored.messageId;
+    } else if (stored.inlineId) {
+      // Inline approach
+      options.inline_message_id = stored.inlineId;
+    } else {
+      return ctx.reply('No valid chat or inline data. Possibly we never stored it.');
+    }
+
+    // setGameScore
+    await ctx.telegram.setGameScore(
+      userId,
+      newScore,
+      {
+        ...options,
+        force: true  // optional
+      },
+      GAME_SHORT_NAME
+    );
+
+    await ctx.reply(
+      `Score of ${newScore} set for @${ctx.from.username || 'user'}. ` +
+      `Check the original game message (or inline message) for "View Results"!`
+    );
+  } catch (err) {
+    console.error('Error in /setscore command:', err);
+    await ctx.reply(`Failed to set score. ${err.message}`);
+  }
+});
+
+/**
+ * Vercel serverless entry
  */
 export default async function handler(req, res) {
   try {
     if (req.method === 'POST') {
-      // Telegraf handle the incoming update
       await bot.handleUpdate(req.body);
       return res.status(200).json({ ok: true });
     } else {
@@ -141,7 +176,6 @@ export default async function handler(req, res) {
   }
 }
 
-// Vercel config
 export const config = {
   api: {
     bodyParser: false
