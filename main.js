@@ -174,14 +174,24 @@ function generateShareCardDataURL() {
       pfpImg.crossOrigin = 'anonymous';
       pfpImg.referrerPolicy = 'no-referrer';
 
+      // ...
       console.log('Attempting to load PFP from:', document.getElementById('userAvatar').src);
-      pfpImg.src = document.getElementById('userAvatar').src;
+
+      // Instead of direct link to Telegram, we route through our proxy
+      const userAvatarUrl = document.getElementById('userAvatar').src;
+      pfpImg.src = '/api/proxyPhoto?url=' + encodeURIComponent(userAvatarUrl);
 
       pfpImg.onload = () => {
-        console.log('PFP loaded successfully:', pfpImg.src);
+        console.log('PFP loaded successfully via proxy:', pfpImg.src);
         ctx.drawImage(pfpImg, pfpX, pfpY, pfpSize, pfpSize);
         renderText();
+       };
+
+      pfpImg.onerror = (err) => {
+        console.error('PFP failed to load via proxy:', pfpImg.src, err);
+      
       };
+
 
       // If the player's PFP fails, fallback to avatarFallback.png
       pfpImg.onerror = (err) => {
