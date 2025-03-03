@@ -1,38 +1,33 @@
 import { Telegraf } from 'telegraf';
 
-// 1) Bot token
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const bot = new Telegraf(TOKEN);
 
-// 2) The short name from BotFather, e.g. "goobi_game"
+// Your short name from BotFather, e.g. "goobi"
 const GAME_SHORT_NAME = 'goobi';
-// 3) The actual URL to your new index.html
+// Your game URL where index.html is hosted
 const GAME_URL = 'https://goobi.vercel.app';
 
-// We'll store chat_id and message_id in memory keyed by userId
-// so we can call setGameScore later with the correct values.
+// We'll store (chat_id, message_id) for each user in memory
 const cachedGameMessage = {};
 
 /**
  * /start command
- *  - Sends the game message using replyWithGame(GAME_SHORT_NAME).
- *  - We store the chat_id & message_id from the returned message.
+ * Sends the game message with replyWithGame(short_name).
+ * We store the chat_id & message_id for setGameScore later.
  */
 bot.command('start', async (ctx) => {
   try {
     console.log('Processing /start command');
 
-    // 1) Send the game message. 
-    //    Telegram automatically shows "Play GOOBI_GAME" in the chat.
+    // 1) Send the game message
     const sentMsg = await ctx.replyWithGame(GAME_SHORT_NAME);
 
-    // 2) Store the chat_id and message_id so we can update them later
-    //    with setGameScore. Key by the user's ID (ctx.from.id).
+    // 2) Store chat_id & message_id in memory, keyed by userId
     cachedGameMessage[ctx.from.id] = {
       chatId: sentMsg.chat.id,
       messageId: sentMsg.message_id
     };
-
   } catch (err) {
     console.error('Error in /start command:', err);
     await ctx.reply('Something went wrong with /start.');
@@ -40,59 +35,91 @@ bot.command('start', async (ctx) => {
 });
 
 /**
- * callback_query:
- *  - Triggered when user taps "Play" in the chat for your short name.
- *  - We must answerGameQuery(GAME_URL) so Telegram loads your index.html.
+ * callback_query for the game:
+ *  - Called when user taps "Play <GAME_SHORT_NAME>" in the chat
+ *  - We must call answerGameQuery(GAME_URL) quickly (within ~15s).
  */
 bot.on('callback_query', async (ctx) => {
-  const query = ctx.callbackQuery;
-  if (query.game_short_name === GAME_SHORT_NAME) {
-    // Provide the game URL for Telegram to open in the game overlay
-    await ctx.answerGameQuery(GAME_URL);
-  } else {
-    await ctx.answerCallbackQuery({
-      text: 'Unknown game short name',
-      show_alert: true
-    });
+  try {
+    const query = ctx.callbackQuery;
+    if (query.game_short_name === GAME_SHORT_NAME) {
+      console.log('User tapped "Play" for short name:', GAME_SHORT_NAME);
+      // Immediately answer with the game URL
+      await ctx.answerGameQuery(GAME_URL);
+    } else {
+      // Possibly an unknown short name
+      await ctx.answerCallbackQuery({
+        text: 'Unknown game short name',
+        show_alert: true
+      });
+    }
+  } catch (err) {
+    console.error('Error in callback_query:', err);
   }
 });
 
 /**
  * /setscore <score>
- *  - For testing or debugging. In real usage, your game might call 
- *    a custom endpoint to set the score after the user finishes.
+ *  - For testing. Real usage might do an HTTP request from the game code.
  */
 bot.command('setscore', async (ctx) => {
   try {
-    // e.g. user sends "/setscore 123"
+    // e.g. "/setscore 123"
     const parts = ctx.message.text.split(' ');
     const newScore = parseInt(parts[1], 10) || 0;
     const userId = ctx.from.id;
 
-    // Retrieve the chat_id & message_id we stored in /start
+    // Get the stored chat_id & message_id
     const stored = cachedGameMessage[userId];
     if (!stored) {
       return ctx.reply('No game message found for you. Please /start again.');
     }
 
-    // Now call setGameScore with chat_id, message_id, and game_short_name
-    // "force" ensures the message updates even if score is lower or same
-    // but typically you only do that if newScore is higher than the old one
     await bot.telegram.setGameScore(
-      userId, 
+      userId,
       newScore,
       {
         chat_id: stored.chatId,
         message_id: stored.messageId,
-        force: true  // optional
+        force: true // ensure scoreboard updates even if same/lower
       },
       GAME_SHORT_NAME
     );
 
-    await ctx.reply(`Score of ${newScore} set for @${ctx.from.username || 'user'}. Check the chat message for "View Results"!`);
+    await ctx.reply(
+      `Score of ${newScore} set for @${ctx.from.username || 'user'}. ` +
+      `Check the original game message in chat for "View Results"!`
+    );
   } catch (err) {
     console.error('Error in /setscore command:', err);
     await ctx.reply('Failed to set score.');
+  }
+});
+
+/**
+ * Inline query handler:
+ *  - Re-add so inline mode works again. 
+ *  - This is a minimal example returning a single "game" result 
+ *    so user can type "@YourBot" in any chat and see "Play goobi".
+ */
+bot.on('inline_query', async (ctx) => {
+  try {
+    const queryText = ctx.inlineQuery?.query || '';
+    console.log('Processing inline query:', queryText);
+
+    // Return an inline "game" result
+    const results = [
+      {
+        type: 'game',
+        id: 'goobi_game_inline',
+        game_short_name: GAME_SHORT_NAME
+      }
+    ];
+
+    // Respond to the inline query
+    await ctx.answerInlineQuery(results);
+  } catch (err) {
+    console.error('Error in inline_query:', err);
   }
 });
 
@@ -102,6 +129,7 @@ bot.command('setscore', async (ctx) => {
 export default async function handler(req, res) {
   try {
     if (req.method === 'POST') {
+      // Telegraf handle the incoming update
       await bot.handleUpdate(req.body);
       return res.status(200).json({ ok: true });
     } else {
