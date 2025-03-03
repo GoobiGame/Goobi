@@ -1,33 +1,22 @@
 import { Telegraf } from 'telegraf';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const WEBAPP_URL = 'https://goobi.vercel.app'; // your mini app front-end
+// We won't use a "web_app" URL anymore, so let's just keep this around if needed:
+const WEBAPP_URL = 'https://goobi.vercel.app';
 
 const bot = new Telegraf(TOKEN);
 
 /**
  * /start command:
- *  - If private chat, show the web_app button & photo
+ *  - If private chat, just send the same link as /play
  *  - If group, fallback to a simple message
  */
 bot.command('start', async (ctx) => {
   try {
     console.log('Processing /start command');
     if (ctx.chat.type === 'private') {
-      // Private chat => web_app is valid
-      const photoUrl = 'https://goobi.vercel.app/assets/inlinePhoto.png';
-      const keyboard = {
-        inline_keyboard: [
-          [
-            { text: 'Play Goobi', web_app: { url: WEBAPP_URL } }
-          ]
-        ]
-      };
-
-      await ctx.replyWithPhoto(photoUrl, {
-        caption: 'Welcome to GoobiBot! Click below to open the game.',
-        reply_markup: keyboard
-      });
+      // Instead of web_app, just send the direct link
+      await ctx.reply('Play Goobi here: https://t.me/goobigamebot/goobi');
     } else {
       // Group chat => just send a normal message
       await ctx.reply('This command works best in a private chat.\nTry /play if you want a link to share here.');
@@ -39,13 +28,12 @@ bot.command('start', async (ctx) => {
 
 /**
  * /play command:
- *  - If used in a group, just send a raw link
- *  - If private, also send the link
+ *  - If used in a group or private, just send a raw link
  */
 bot.command('play', async (ctx) => {
   try {
     console.log('Processing /play command');
-    // If you want the same logic for private or group, you can unify it
+    // Unified logic for private or group: send the direct link
     await ctx.reply('Play Goobi here: https://t.me/goobigamebot/goobi');
   } catch (err) {
     console.error('Error in /play command:', err);
@@ -90,6 +78,8 @@ bot.on('inline_query', async (ctx) => {
 
 /**
  * Handle web_app_data from the Mini App
+ * (If you're no longer using web_app in /start, this might be unused,
+ * but we'll keep it in case you still have references or future usage.)
  */
 bot.on('message', async (ctx) => {
   try {
