@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Telegram user data
   let finalUsername = 'Player';
   if (window.Telegram && Telegram.WebApp) {
-    const user = window.Telegram.WebApp.initDataUnsafe.user;
+    const user = Telegram.WebApp.initDataUnsafe.user;
     if (user) {
       finalUsername = user.username || user.first_name || 'Player';
       const headerAvatar = document.getElementById('userAvatar');
@@ -163,9 +163,6 @@ function generateShareCardDataURL() {
       const finalScore = window.finalScore ?? 0;
       const newHigh = window.isNewHighScore === true;
 
-      // Removed the "gray square" placeholder entirely
-      // so the scoreboard background shows through
-
       const pfpSize = 200;
       const pfpX = (canvas.width - pfpSize) / 2;
       const pfpY = 50;
@@ -197,7 +194,6 @@ function generateShareCardDataURL() {
           renderText();
         };
         fallbackImg.onerror = () => {
-          // If fallback also fails, we do nothing
           console.log('Even fallback image failed, leaving area transparent');
           renderText();
         };
@@ -256,6 +252,9 @@ window.updateShareCardPreview = async function() {
   }
 };
 
+/**
+ * Copy button: only copy the image (no text).
+ */
 async function copyScoreToClipboard() {
   try {
     if (!window.shareCardDataURL) {
@@ -263,49 +262,45 @@ async function copyScoreToClipboard() {
     }
     const dataURL = window.shareCardDataURL;
 
+    // Convert dataURL to a blob
     const blob = await fetch(dataURL).then(res => res.blob());
-    const username = window.telegramData?.username || 'Player';
-    const finalScore = window.finalScore ?? 0;
-    const shareText = `Check out my Goobi score! @${username} - Score: ${finalScore}\nPlay now: https://t.me/goobigamebot`;
 
+    // We only copy the image, no text
     await navigator.clipboard.write([
       new ClipboardItem({
-        'image/png': blob,
-        'text/plain': new Blob([shareText], { type: 'text/plain' })
+        'image/png': blob
       })
     ]);
-    alert('Score card and link copied to clipboard! Paste it anywhere.');
+
+    alert('Score image copied to clipboard! Paste it anywhere that supports images.');
   } catch (err) {
     console.error('Clipboard write failed:', err);
-    const username = window.telegramData?.username || 'Player';
-    const finalScore = window.finalScore ?? 0;
-    const shareText = `Check out my Goobi score! @${username} - Score: ${finalScore}\nPlay now: https://t.me/goobigamebot`;
-    await navigator.clipboard.writeText(shareText);
-    alert('Image copy failed, but text was copied! Paste it anywhere.');
+    alert('Image copy failed. Try a different approach.');
   }
 }
 
+/**
+ * Share button: send text data to the bot, so it posts a message in the chat
+ */
 async function shareScoreToChat() {
   try {
     if (!window.shareCardDataURL) {
       window.shareCardDataURL = await generateShareCardDataURL();
     }
-    const dataURL = window.shareCardDataURL;
     const username = window.telegramData?.username || 'Player';
     const finalScore = window.finalScore ?? 0;
-    const shareText = `Check out my Goobi score! @${username} - Score: ${finalScore}\nPlay now: https://t.me/goobigamebot`;
+    const shareText = `@${username} just scored ${finalScore} in Goobi!\nPlay now: https://t.me/goobigamebot`;
 
     if (window.Telegram && Telegram.WebApp) {
+      // Send text data to the bot
       Telegram.WebApp.sendData(JSON.stringify({
         type: 'share_score',
-        text: shareText,
-        score: finalScore,
-        username: username
+        text: shareText
       }));
-      console.log('Sent to Telegram chat:', { text: shareText });
+      console.log('Sent share text to the bot:', shareText);
     } else {
       console.log('Mock share to chat:', { text: shareText });
-      alert('Shared to chat (mocked): ' + shareText);
+      alert(`Shared to chat (mocked): ${shareText}`);
     }
   } catch (err) {
     console.error('Share to chat failed:', err);

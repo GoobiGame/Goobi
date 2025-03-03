@@ -1,23 +1,16 @@
 import { Telegraf } from 'telegraf';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-// Your mini app front-end (for the web_app button in /start)
-const WEBAPP_URL = 'https://goobi.vercel.app';
+const WEBAPP_URL = 'https://goobi.vercel.app'; // Your mini app front-end
 
-// Create Telegraf bot instance
 const bot = new Telegraf(TOKEN);
 
-/**
- * /start command: Sends an image plus a "Play Goobi" web app button
- */
+// /start command: send an image + "Play Goobi" web app button
 bot.command('start', async (ctx) => {
   try {
     console.log('Processing /start command');
-
-    // Full URL to your inlinePhoto.png in /assets
     const photoUrl = 'https://goobi.vercel.app/assets/inlinePhoto.png';
 
-    // Inline keyboard with a web_app button
     const keyboard = {
       inline_keyboard: [
         [
@@ -26,7 +19,6 @@ bot.command('start', async (ctx) => {
       ]
     };
 
-    // Send an image with a caption + button
     await ctx.replyWithPhoto(photoUrl, {
       caption: 'Welcome to GoobiBot! Click below to open the game.',
       reply_markup: keyboard
@@ -36,44 +28,61 @@ bot.command('start', async (ctx) => {
   }
 });
 
-/**
- * Inline query: Return an "article" result for "Play Goobi"
- * This approach is known to work reliably if inline mode is enabled.
- */
+// Inline query remains the same
 bot.on('inline_query', async (ctx) => {
-    try {
-      console.log('Processing inline query:', ctx.inlineQuery?.query);
-  
-      // Suppose you have inlinePhoto.png in /assets
-      const thumbUrl = 'https://goobi.vercel.app/assets/inlinePhoto.png';
-  
-      const results = [
-        {
-          type: 'article',
-          id: 'play',
-          title: 'Play Goobi',
-          description: 'Click to Launch Goobi',
-          thumb_url: thumbUrl,
-          thumb_width: 50,
-          thumb_height: 50,
-          input_message_content: {
-            message_text: 'Click to play Goobi: t.me/goobigamebot/goobi'
-          },
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: 'Play Goobi', url: 't.me/goobigamebot/goobi' }
-              ]
+  try {
+    console.log('Processing inline query:', ctx.inlineQuery?.query);
+
+    const thumbUrl = 'https://goobi.vercel.app/assets/inlinePhoto.png';
+    const results = [
+      {
+        type: 'article',
+        id: 'play',
+        title: 'Play Goobi',
+        description: 'Click to Launch Goobi',
+        thumb_url: thumbUrl,
+        thumb_width: 50,
+        thumb_height: 50,
+        input_message_content: {
+          message_text: 'Click to play Goobi: t.me/goobigamebot/goobi'
+        },
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: 'Play Goobi', url: 't.me/goobigamebot/goobi' }
             ]
-          }
+          ]
         }
-      ];
-  
-      await ctx.answerInlineQuery(results);
-    } catch (err) {
-      console.error('Error in inline query:', err);
+      }
+    ];
+
+    await ctx.answerInlineQuery(results);
+  } catch (err) {
+    console.error('Error in inline query:', err);
+  }
+});
+
+/**
+ * Handle web_app_data from the Mini App
+ * This event triggers when the user calls Telegram.WebApp.sendData(...)
+ */
+bot.on('message', async (ctx) => {
+  try {
+    // If it's a web_app_data message
+    if (ctx.message?.web_app_data?.data) {
+      const dataStr = ctx.message.web_app_data.data;
+      console.log('Received web_app_data:', dataStr);
+
+      const parsed = JSON.parse(dataStr);
+      if (parsed.type === 'share_score') {
+        // Post the text in the same chat
+        await ctx.reply(parsed.text);
+      }
     }
-  });
+  } catch (err) {
+    console.error('Error handling web_app_data message:', err);
+  }
+});
 
 /**
  * Vercel serverless function entry point
@@ -92,9 +101,6 @@ export default async function handler(req, res) {
   }
 }
 
-/**
- * Disable Next.js body parsing if needed
- */
 export const config = {
   api: {
     bodyParser: false
