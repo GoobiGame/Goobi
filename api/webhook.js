@@ -1,34 +1,60 @@
 import { Telegraf } from 'telegraf';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const WEBAPP_URL = 'https://goobi.vercel.app'; // Your mini app front-end
+const WEBAPP_URL = 'https://goobi.vercel.app'; // your mini app front-end
 
 const bot = new Telegraf(TOKEN);
 
-// /start command: send an image + "Play Goobi" web app button
+/**
+ * /start command:
+ *  - If private chat, show the web_app button & photo
+ *  - If group, fallback to a simple message
+ */
 bot.command('start', async (ctx) => {
   try {
     console.log('Processing /start command');
-    const photoUrl = 'https://goobi.vercel.app/assets/inlinePhoto.png';
-
-    const keyboard = {
-      inline_keyboard: [
-        [
-          { text: 'Play Goobi', web_app: { url: WEBAPP_URL } }
+    if (ctx.chat.type === 'private') {
+      // Private chat => web_app is valid
+      const photoUrl = 'https://goobi.vercel.app/assets/inlinePhoto.png';
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: 'Play Goobi', web_app: { url: WEBAPP_URL } }
+          ]
         ]
-      ]
-    };
+      };
 
-    await ctx.replyWithPhoto(photoUrl, {
-      caption: 'Welcome to GoobiBot! Click below to open the game.',
-      reply_markup: keyboard
-    });
+      await ctx.replyWithPhoto(photoUrl, {
+        caption: 'Welcome to GoobiBot! Click below to open the game.',
+        reply_markup: keyboard
+      });
+    } else {
+      // Group chat => just send a normal message
+      await ctx.reply('This command works best in a private chat.\nTry /play if you want a link to share here.');
+    }
   } catch (err) {
     console.error('Error in /start command:', err);
   }
 });
 
-// Inline query remains the same
+/**
+ * /play command:
+ *  - If used in a group, just send a raw link
+ *  - If private, also send the link
+ */
+bot.command('play', async (ctx) => {
+  try {
+    console.log('Processing /play command');
+    // If you want the same logic for private or group, you can unify it
+    await ctx.reply('Play Goobi here: https://t.me/goobigamebot/goobi');
+  } catch (err) {
+    console.error('Error in /play command:', err);
+  }
+});
+
+/**
+ * Inline query remains the same if you want
+ */
 bot.on('inline_query', async (ctx) => {
   try {
     console.log('Processing inline query:', ctx.inlineQuery?.query);
@@ -64,7 +90,6 @@ bot.on('inline_query', async (ctx) => {
 
 /**
  * Handle web_app_data from the Mini App
- * This event triggers when the user calls Telegram.WebApp.sendData(...)
  */
 bot.on('message', async (ctx) => {
   try {
@@ -75,7 +100,6 @@ bot.on('message', async (ctx) => {
 
       const parsed = JSON.parse(dataStr);
       if (parsed.type === 'share_score') {
-        // Post the text in the same chat
         await ctx.reply(parsed.text);
       }
     }

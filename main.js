@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
         headerAvatar.src = user.photo_url;
         headerAvatar.onerror = () => {
           console.error('Failed to load Telegram PFP:', user.photo_url);
-          // Fallback to avatarFallback.png for the header
           headerAvatar.src = 'assets/avatarFallback.png';
         };
       } else if (headerAvatar) {
@@ -101,13 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Game Over sharing buttons
-  const copyScoreButton = document.getElementById('copyScoreButton');
+  // Only one button now: shareToChatButton
   const shareToChatButton = document.getElementById('shareToChatButton');
-
-  if (copyScoreButton) {
-    copyScoreButton.addEventListener('click', copyScoreToClipboard);
-  }
   if (shareToChatButton) {
     shareToChatButton.addEventListener('click', shareScoreToChat);
   }
@@ -134,7 +128,7 @@ function scaleGame() {
 
 window.addEventListener('resize', scaleGame);
 
-/* share card logic remains unchanged below */
+/* share card logic remains if you still want a scoreboard preview */
 
 function drawCenteredText(ctx, text, y, font, fillStyle) {
   ctx.font = font;
@@ -180,7 +174,6 @@ function generateShareCardDataURL() {
         renderText();
       };
 
-      // If player's PFP fails, we fallback to avatarFallback.png
       pfpImg.onerror = (err) => {
         console.error('PFP failed to load:', pfpImg.src, err);
         const fallbackImg = new Image();
@@ -253,33 +246,6 @@ window.updateShareCardPreview = async function() {
 };
 
 /**
- * Copy button: only copy the image (no text).
- */
-async function copyScoreToClipboard() {
-  try {
-    if (!window.shareCardDataURL) {
-      window.shareCardDataURL = await generateShareCardDataURL();
-    }
-    const dataURL = window.shareCardDataURL;
-
-    // Convert dataURL to a blob
-    const blob = await fetch(dataURL).then(res => res.blob());
-
-    // We only copy the image, no text
-    await navigator.clipboard.write([
-      new ClipboardItem({
-        'image/png': blob
-      })
-    ]);
-
-    alert('Score image copied to clipboard! Paste it anywhere that supports images.');
-  } catch (err) {
-    console.error('Clipboard write failed:', err);
-    alert('Image copy failed. Try a different approach.');
-  }
-}
-
-/**
  * Share button: send text data to the bot, so it posts a message in the chat
  */
 async function shareScoreToChat() {
@@ -292,7 +258,6 @@ async function shareScoreToChat() {
     const shareText = `@${username} just scored ${finalScore} in Goobi!\nPlay now: https://t.me/goobigamebot`;
 
     if (window.Telegram && Telegram.WebApp) {
-      // Send text data to the bot
       Telegram.WebApp.sendData(JSON.stringify({
         type: 'share_score',
         text: shareText
@@ -304,6 +269,6 @@ async function shareScoreToChat() {
     }
   } catch (err) {
     console.error('Share to chat failed:', err);
-    alert('Failed to share to chat. Try copying instead.');
+    alert('Failed to share to chat. Possibly not in Telegram context.');
   }
 }
