@@ -1,100 +1,73 @@
 import { Telegraf } from 'telegraf';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-// We won't use a "web_app" URL anymore, so let's just keep this around if needed:
-const WEBAPP_URL = 'https://goobi.vercel.app';
-
 const bot = new Telegraf(TOKEN);
+
+// 1) The short name from BotFather, e.g. "goobi_game"
+const GAME_SHORT_NAME = 'goobi';
+
+// 2) The actual URL to your game (new index.html), e.g. "https://goobi.vercel.app/game/index.html"
+//    or just "https://goobi.vercel.app" if that's where index.html is
+const GAME_URL = 'https://goobi.vercel.app';
 
 /**
  * /start command:
- *  - If private chat, just send the same link as /play
- *  - If group, fallback to a simple message
+ * Sends a "Play <GAME_SHORT_NAME>" button in chat. 
  */
 bot.command('start', async (ctx) => {
   try {
     console.log('Processing /start command');
-    if (ctx.chat.type === 'private') {
-      // Instead of web_app, just send the direct link
-      await ctx.reply('Play Goobi here: https://t.me/goobigamebot/goobi');
-    } else {
-      // Group chat => just send a normal message
-      await ctx.reply('This command works best in a private chat.\nTry /play if you want a link to share here.');
-    }
+    // Telegram shows "Play GOOBI_GAME" button
+    await ctx.replyWithGame(GAME_SHORT_NAME);
   } catch (err) {
     console.error('Error in /start command:', err);
+    await ctx.reply('Something went wrong with /start.');
   }
 });
 
 /**
- * /play command:
- *  - If used in a group or private, just send a raw link
+ * callback_query:
+ * Triggered when user taps "Play" button for your short name.
+ * We must answerGameQuery with the actual GAME_URL
  */
-bot.command('play', async (ctx) => {
-  try {
-    console.log('Processing /play command');
-    // Unified logic for private or group: send the direct link
-    await ctx.reply('Play Goobi here: https://t.me/goobigamebot/goobi');
-  } catch (err) {
-    console.error('Error in /play command:', err);
+bot.on('callback_query', async (ctx) => {
+  const query = ctx.callbackQuery;
+  if (query.game_short_name === GAME_SHORT_NAME) {
+    // Provide the game URL for Telegram to open
+    await ctx.answerGameQuery(GAME_URL);
+  } else {
+    await ctx.answerCallbackQuery({
+      text: 'Unknown game short name',
+      show_alert: true
+    });
   }
 });
 
 /**
- * Inline query remains the same if you want
+ * (Optional) /setscore command:
+ * Example for debugging or manual scoring.
+ * Typically you'd set scores automatically from your game code,
+ * calling your bot to run setGameScore(...) 
  */
-bot.on('inline_query', async (ctx) => {
+bot.command('setscore', async (ctx) => {
   try {
-    console.log('Processing inline query:', ctx.inlineQuery?.query);
+    // e.g. user sends "/setscore 123"
+    const parts = ctx.message.text.split(' ');
+    const newScore = parseInt(parts[1], 10);
 
-    const thumbUrl = 'https://goobi.vercel.app/assets/inlinePhoto.png';
-    const results = [
-      {
-        type: 'article',
-        id: 'play',
-        title: 'Play Goobi',
-        description: 'Click to Launch Goobi',
-        thumb_url: thumbUrl,
-        thumb_width: 50,
-        thumb_height: 50,
-        input_message_content: {
-          message_text: 'Click to play Goobi: t.me/goobigamebot/goobi'
-        },
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: 'Play Goobi', url: 't.me/goobigamebot/goobi' }
-            ]
-          ]
-        }
-      }
-    ];
+    // setGameScore requires user_id, score, and game_short_name
+    await ctx.telegram.setGameScore(
+      ctx.from.id,      // user_id
+      newScore,         // score
+      undefined,        // inline_message_id
+      undefined,        // chat_id
+      GAME_SHORT_NAME   // your short name
+    );
 
-    await ctx.answerInlineQuery(results);
+    await ctx.reply(`Score of ${newScore} set for @${ctx.from.username || 'user'}`);
   } catch (err) {
-    console.error('Error in inline query:', err);
-  }
-});
-
-/**
- * Handle web_app_data from the Mini App
- * (If you're no longer using web_app in /start, this might be unused,
- * but we'll keep it in case you still have references or future usage.)
- */
-bot.on('message', async (ctx) => {
-  try {
-    // If it's a web_app_data message
-    if (ctx.message?.web_app_data?.data) {
-      const dataStr = ctx.message.web_app_data.data;
-      console.log('Received web_app_data:', dataStr);
-
-      const parsed = JSON.parse(dataStr);
-      if (parsed.type === 'share_score') {
-        await ctx.reply(parsed.text);
-      }
-    }
-  } catch (err) {
-    console.error('Error handling web_app_data message:', err);
+    console.error('Error in /setscore command:', err);
+    await ctx.reply('Failed to set score.');
   }
 });
 

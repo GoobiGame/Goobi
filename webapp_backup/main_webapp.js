@@ -4,8 +4,30 @@ import { AudioManager } from './audioManager.js';
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded fired');
 
-  // We remove Telegram.WebApp references. Instead, just do a normal scale on load
+  // Check Telegram WebApp context
+  if (window.Telegram && Telegram.WebApp) {
+    console.log('Telegram WebApp available. Init Data:', Telegram.WebApp.initDataUnsafe);
+
+    // Expand the WebApp to full height
+    Telegram.WebApp.expand();
+
+    // Listen for viewport changes, re-expand
+    Telegram.WebApp.onEvent('viewportChanged', () => {
+      Telegram.WebApp.expand();
+      scaleGame();
+    });
+  } else {
+    console.log('Not in Telegram context - Telegram.WebApp unavailable');
+  }
+
+  // Call scaleGame() once immediately
   scaleGame();
+
+
+setTimeout(() => {
+  Telegram.WebApp.expand();
+  scaleGame();
+}, 300);
 
   // Audio setup
   const audioManager = new AudioManager('assets/themeMusic.wav');
@@ -40,10 +62,34 @@ document.addEventListener('DOMContentLoaded', () => {
     lastTouchEnd = now;
   }, { passive: false });
 
-  // We no longer detect Telegram user data. Default to "Player"
-  // If you want to store the user's name or photo, you'd do so via the Game Bot approach
-  window.telegramData = { username: 'Player' };
-  console.log('Telegram Data defaulted to Player');
+  // Telegram user data
+  let finalUsername = 'Player';
+  if (window.Telegram && Telegram.WebApp) {
+    const user = Telegram.WebApp.initDataUnsafe.user;
+    if (user) {
+      finalUsername = user.username || user.first_name || 'Player';
+      const headerAvatar = document.getElementById('userAvatar');
+      if (headerAvatar && user.photo_url) {
+        headerAvatar.src = user.photo_url;
+        headerAvatar.onerror = () => {
+          console.error('Failed to load Telegram PFP:', user.photo_url);
+          headerAvatar.src = 'assets/avatarFallback.png';
+        };
+      } else if (headerAvatar) {
+        headerAvatar.src = 'assets/avatarFallback.png';
+      }
+    }
+  } else {
+    // Not in Telegram context
+    const urlParams = new URLSearchParams(window.location.search);
+    finalUsername = urlParams.get('username') || 'Player';
+    const headerAvatar = document.getElementById('userAvatar');
+    if (headerAvatar) {
+      headerAvatar.src = 'assets/avatarFallback.png';
+    }
+  }
+  window.telegramData = { username: finalUsername };
+  console.log('Telegram Data:', window.telegramData);
 
   // Start screen logic
   if (sessionStorage.getItem('skipStartScreen') === 'true') {
@@ -69,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Share to Telegram button
+  // The only button now is "shareToChatButton" (if you removed the copy button from HTML)
   const shareToChatButton = document.getElementById('shareToChatButton');
   if (shareToChatButton) {
     shareToChatButton.addEventListener('click', shareScoreToChat);
@@ -84,11 +130,13 @@ function scaleGame() {
   const gameWidth = 400;
   const gameHeight = 740;
 
-  // Just do normal viewport detection
   let viewportWidth = window.innerWidth;
   let viewportHeight = window.innerHeight;
 
-  // We remove Telegram.WebApp.viewportStableHeight references
+  if (window.Telegram && Telegram.WebApp && Telegram.WebApp.viewportStableHeight) {
+    viewportHeight = Telegram.WebApp.viewportStableHeight;
+  }
+
   const scaleX = viewportWidth / gameWidth;
   const scaleY = viewportHeight / gameHeight;
   const scale = Math.min(scaleX, scaleY);
@@ -98,7 +146,7 @@ function scaleGame() {
 
 window.addEventListener('resize', scaleGame);
 
-/* share card logic remains the same if you want the scoreboard preview, etc. */
+/* share card logic remains if you want the scoreboard preview */
 
 function drawCenteredText(ctx, text, y, font, fillStyle) {
   ctx.font = font;
@@ -131,22 +179,44 @@ function generateShareCardDataURL() {
       const pfpX = (canvas.width - pfpSize) / 2;
       const pfpY = 50;
 
-      // We'll just use a fallback avatar, since we can't fetch Telegram user photo
       const pfpImg = new Image();
-      pfpImg.src = 'assets/avatarFallback.png'; 
+      pfpImg.crossOrigin = 'anonymous';
+      pfpImg.referrerPolicy = 'no-referrer';
+
+      console.log('Attempting to load PFP from:', document.getElementById('userAvatar').src);
+      pfpImg.src = '/api/proxyPhoto?url=' + encodeURIComponent(document.getElementById('userAvatar').src);
+
       pfpImg.onload = () => {
+        console.log('PFP loaded successfully via proxy:', pfpImg.src);
         ctx.drawImage(pfpImg, pfpX, pfpY, pfpSize, pfpSize);
         renderText();
       };
-      pfpImg.onerror = () => {
-        console.error('Failed to load fallback avatar');
-        renderText();
+
+      // If player's PFP fails, fallback to avatarFallback
+      pfpImg.onerror = (err) => {
+        console.error('PFP failed to load:', pfpImg.src, err);
+        const fallbackImg = new Image();
+        fallbackImg.crossOrigin = 'anonymous';
+        fallbackImg.referrerPolicy = 'no-referrer';
+        fallbackImg.src = 'assets/avatarFallback.png';
+
+        fallbackImg.onload = () => {
+          console.log('Falling back to assets/avatarFallback.png for PFP');
+          ctx.drawImage(fallbackImg, pfpX, pfpY, pfpSize, pfpSize);
+          renderText();
+        };
+        fallbackImg.onerror = () => {
+          console.log('Even fallback image failed, leaving area transparent');
+          renderText();
+        };
       };
 
       function renderText() {
         const mainLineY = pfpY + pfpSize + 70;
+        const highScoreLineY = mainLineY - 120;
+
         if (newHigh) {
-          drawCenteredText(ctx, 'New Personal High Score!', mainLineY - 120, '100px sans-serif', 'red');
+          drawCenteredText(ctx, 'New Personal High Score!', highScoreLineY, '100px sans-serif', 'red');
         }
         const mainLine = `@${username} - Score: ${finalScore}`;
         drawCenteredText(ctx, mainLine, mainLineY, '100px sans-serif', 'white');
@@ -165,9 +235,10 @@ function generateShareCardDataURL() {
       const finalScore = window.finalScore ?? 0;
       const newHigh = window.isNewHighScore === true;
       const mainLineY = 270;
+      const highScoreLineY = mainLineY - 60;
 
       if (newHigh) {
-        drawCenteredText(ctx, 'New Personal High Score!', mainLineY - 60, '60px sans-serif', 'red');
+        drawCenteredText(ctx, 'New Personal High Score!', highScoreLineY, '60px sans-serif', 'red');
       }
       const mainLine = `@${username} - Score: ${finalScore}`;
       drawCenteredText(ctx, mainLine, mainLineY, '80px sans-serif', 'white');
@@ -194,8 +265,7 @@ window.updateShareCardPreview = async function() {
 };
 
 /**
- * Share button: previously we used Telegram.WebApp.sendData(...)
- * Now we can either do a "mock" share or do nothing 
+ * Share button: send text data to the bot, so it posts a message in the chat
  */
 async function shareScoreToChat() {
   try {
@@ -204,13 +274,20 @@ async function shareScoreToChat() {
     }
     const username = window.telegramData?.username || 'Player';
     const finalScore = window.finalScore ?? 0;
-    const shareText = `@${username} just scored ${finalScore} in Goobi!`;
+    const shareText = `@${username} just scored ${finalScore} in Goobi!\nPlay now: https://t.me/goobigamebot`;
 
-    // No Telegram.WebApp. We'll just do a normal alert or console
-    console.log('Share to chat (mock):', shareText);
-    alert(`Shared to chat (mocked): ${shareText}`);
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.sendData(JSON.stringify({
+        type: 'share_score',
+        text: shareText
+      }));
+      console.log('Sent share text to the bot:', shareText);
+    } else {
+      console.log('Mock share to chat:', { text: shareText });
+      alert(`Shared to chat (mocked): ${shareText}`);
+    }
   } catch (err) {
     console.error('Share to chat failed:', err);
-    alert('Failed to share to chat (mock).');
+    alert('Failed to share to chat. Possibly not in Telegram context.');
   }
 }

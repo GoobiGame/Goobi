@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
   <title>Goobi</title>
 
-  <!-- Removed telegram-web-app.js since we are not using WebApp anymore -->
+  <!-- Telegram WebApp script -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
     /* GLOBAL RESET */
@@ -235,6 +236,8 @@
       padding: 10px 20px;
       font-size: 1.2em;
     }
+
+    /* REMOVED LEADERBOARD SCREEN ENTIRELY */
   </style>
 </head>
 <body>
@@ -282,6 +285,7 @@
       <video id="gameOverVideo" loop muted playsinline autoplay>
         <source src="assets/gameOver.mp4" type="video/mp4">
       </video>
+      <!-- Removed any leaderboard button here -->
       <h1 id="gameOverMessage">Game Over</h1>
       <div id="gameOverActions">
         <img id="shareCardPreview" src="" alt="Share Card Preview" style="display:none;">
@@ -291,7 +295,6 @@
     </div>
   </div>
 
-  <!-- We now reference a new main.js that does NOT use Telegram.WebApp -->
   <script type="module" src="main.js"></script>
 </body>
 </html>
