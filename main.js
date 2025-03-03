@@ -58,19 +58,20 @@ document.addEventListener('DOMContentLoaded', () => {
         headerAvatar.src = user.photo_url;
         headerAvatar.onerror = () => {
           console.error('Failed to load Telegram PFP:', user.photo_url);
-          // The header fallback is assets/card.png
-          headerAvatar.src = 'assets/card.png';
+          // Fallback to avatarFallback.png for the header
+          headerAvatar.src = 'assets/avatarFallback.png';
         };
       } else if (headerAvatar) {
-        headerAvatar.src = 'assets/card.png';
+        headerAvatar.src = 'assets/avatarFallback.png';
       }
     }
   } else {
+    // Not in Telegram context
     const urlParams = new URLSearchParams(window.location.search);
     finalUsername = urlParams.get('username') || 'Player';
     const headerAvatar = document.getElementById('userAvatar');
     if (headerAvatar) {
-      headerAvatar.src = 'assets/card.png';
+      headerAvatar.src = 'assets/avatarFallback.png';
     }
   }
   window.telegramData = { username: finalUsername };
@@ -182,21 +183,21 @@ function generateShareCardDataURL() {
         renderText();
       };
 
-      // Fallback to the same fallback the header uses: assets/card.png
+      // If the player's PFP fails, fallback to avatarFallback.png
       pfpImg.onerror = (err) => {
         console.error('PFP failed to load:', pfpImg.src, err);
         const fallbackImg = new Image();
         fallbackImg.crossOrigin = 'anonymous';
         fallbackImg.referrerPolicy = 'no-referrer';
-        fallbackImg.src = 'assets/card.png'; // same fallback as the header
+        fallbackImg.src = 'assets/avatarFallback.png';
 
         fallbackImg.onload = () => {
-          console.log('Falling back to assets/card.png for PFP');
+          console.log('Falling back to assets/avatarFallback.png for PFP');
           ctx.drawImage(fallbackImg, pfpX, pfpY, pfpSize, pfpSize);
           renderText();
         };
         fallbackImg.onerror = () => {
-          // If fallback also fails, draw a gray square
+          // If fallback also fails, just draw a gray square
           ctx.fillStyle = '#666';
           ctx.fillRect(pfpX, pfpY, pfpSize, pfpSize);
           renderText();
