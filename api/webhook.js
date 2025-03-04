@@ -42,6 +42,7 @@ bot.on('callback_query', async (ctx) => {
     const query = ctx.callbackQuery;
     if (query.game_short_name === GAME_SHORT_NAME) {
       console.log('User tapped "Play" for short name:', GAME_SHORT_NAME);
+      console.log('Providing game URL:', GAME_URL);
       await ctx.answerGameQuery(GAME_URL);
     } else {
       await ctx.answerCallbackQuery({ text: 'Unknown game short name', show_alert: true });

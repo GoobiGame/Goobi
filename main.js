@@ -63,6 +63,12 @@ document.addEventListener('DOMContentLoaded', () => {
     chatId: telegramParams.chatId,
     messageId: telegramParams.messageId,
     inlineId: telegramParams.inlineId,
+    // Fallback for testing if parameters are missing
+    ...(telegramParams.userId ? {} : {
+      userId: '1841599169', // Use your user ID from the logs
+      chatId: '1841599169',
+      messageId: '140',
+    }),
   };
   console.log('Telegram Data:', window.telegramData);
 
@@ -228,11 +234,7 @@ async function shareScoreToChat() {
     const shareText = `@${username} just scored ${finalScore} in Goobi!`;
 
     const { userId, chatId, messageId, inlineId } = window.telegramData;
-    if (!userId) {
-      console.log('No userId available. Running outside Telegram context.');
-      alert(`Shared to chat (mocked): ${shareText}`);
-      return;
-    }
+    console.log('Sharing score with:', { userId, chatId, messageId, inlineId });
 
     // Use the full Vercel URL for the API call
     const response = await fetch('https://goobi.vercel.app/api/submit-score', {
