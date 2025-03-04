@@ -58,6 +58,62 @@ bot.command('help', async (ctx) => {
 });
 
 /**
+ * /leaderboard command: Displays the top 10 players for Goobi
+ */
+bot.command('leaderboard', async (ctx) => {
+  try {
+    console.log('Processing /leaderboard command for user:', ctx.from.id);
+    const userId = ctx.from.id;
+    const stored = cachedGameMessage[userId];
+
+    // Check if we have the chat and message IDs from a previous game message
+    if (!stored || (!stored.chatId && !stored.inlineId)) {
+      return ctx.reply('No game message found. Try /start first to play a game and then check the leaderboard.');
+    }
+
+    // Prepare payload for getGameHighScores
+    let payload = {};
+    if (stored.chatId && stored.messageId) {
+      payload.chat_id = stored.chatId;
+      payload.message_id = stored.messageId;
+    } else if (stored.inlineId) {
+      payload.inline_message_id = stored.inlineId;
+    }
+
+    // Fetch the top scores using getGameHighScores
+    const response = await fetch(`https://api.telegram.org/bot${TOKEN}/getGameHighScores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+
+    if (!result.ok) {
+      console.error('Failed to fetch leaderboard:', result);
+      return ctx.reply('Failed to fetch the leaderboard. Please try again later.');
+    }
+
+    const highScores = result.result || [];
+    if (highScores.length === 0) {
+      return ctx.reply('No scores yet! Be the first to play and set a high score with /start.');
+    }
+
+    // Format the top 10 scores
+    const topScores = highScores.slice(0, 10); // Limit to top 10
+    let leaderboardMessage = '🏆 Goobi Leaderboard - Top 10 Players 🏆\n\n';
+    topScores.forEach((scoreEntry, index) => {
+      const username = scoreEntry.user.username || scoreEntry.user.first_name || 'Unknown';
+      leaderboardMessage += `${index + 1}. ${username} – ${scoreEntry.score}\n`;
+    });
+
+    await ctx.reply(leaderboardMessage);
+  } catch (err) {
+    console.error('Error in /leaderboard command:', err);
+    await ctx.reply('Something went wrong with /leaderboard. Please try again.');
+  }
+});
+
+/**
  * When someone taps "Play goobi"
  */
 bot.on('callback_query', async (ctx) => {
