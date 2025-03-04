@@ -1,26 +1,30 @@
 export function setupControls(player) {
     // Keyboard controls
+    let isJumpPressed = false;
+  
     window.addEventListener('keydown', (e) => {
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         player.moveLeft();
       } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
         player.moveRight();
       } else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
-        player.jump();
+        isJumpPressed = true;
+        player.jump(isJumpPressed);
       }
     });
   
     window.addEventListener('keyup', (e) => {
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
-        if (!player.rightPressed) {
+        if (player.dx < 0) {
           player.stop();
         }
       } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
-        if (!player.leftPressed) {
+        if (player.dx > 0) {
           player.stop();
         }
       } else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
-        player.jumpKeyReleased = true;
+        isJumpPressed = false;
+        player.jump(isJumpPressed);
       }
     });
   
@@ -32,7 +36,7 @@ export function setupControls(player) {
     let touchId = null;
     let joystickCenterX = joystick.offsetWidth / 2;
     let joystickCenterY = joystick.offsetHeight / 2;
-    const maxDistance = 30; // Maximum distance the thumb can move from the center
+    const maxDistance = 30;
   
     joystick.addEventListener('touchstart', (e) => {
       e.preventDefault();
@@ -64,26 +68,22 @@ export function setupControls(player) {
       const touchX = touch.clientX - rect.left;
       const touchY = touch.clientY - rect.top;
   
-      // Calculate the distance from the center
       const dx = touchX - joystickCenterX;
       const dy = touchY - joystickCenterY;
       const distance = Math.sqrt(dx * dx + dy * dy);
   
-      // Restrict to horizontal movement only
       let constrainedX = dx;
-      let constrainedY = 0; // Keep Y at 0 for horizontal-only movement
+      let constrainedY = 0;
   
-      // Limit the distance
       if (distance > maxDistance) {
         const angle = Math.atan2(dy, dx);
         constrainedX = maxDistance * Math.cos(angle);
-        constrainedY = 0; // Keep Y at 0
+        constrainedY = 0;
       }
   
       joystickThumb.style.transform = `translate(${constrainedX}px, ${constrainedY}px)`;
   
-      // Move the player based on joystick position
-      if (constrainedX < -10) { // Threshold to avoid jitter
+      if (constrainedX < -10) {
         player.moveLeft();
       } else if (constrainedX > 10) {
         player.moveRight();
@@ -93,17 +93,21 @@ export function setupControls(player) {
     }
   
     // Jump button
+    let isJumpTouchHeld = false;
+  
     jumpBtn.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      player.jump();
+      isJumpTouchHeld = true;
+      player.jump(isJumpTouchHeld);
     });
   
     jumpBtn.addEventListener('touchend', (e) => {
       e.preventDefault();
-      player.jumpKeyReleased = true; // Allow double jump after releasing
+      isJumpTouchHeld = false;
+      player.jump(isJumpTouchHeld);
     });
   
-    // Mouse support for desktop (optional, for testing)
+    // Mouse support for desktop
     let isDragging = false;
   
     joystick.addEventListener('mousedown', (e) => {
@@ -157,13 +161,15 @@ export function setupControls(player) {
       }
     }
   
-    jumpBtn.addEventListener('click', (e) => {
+    jumpBtn.addEventListener('mousedown', (e) => {
       e.preventDefault();
-      player.jump();
+      isJumpPressed = true;
+      player.jump(isJumpPressed);
     });
   
     jumpBtn.addEventListener('mouseup', (e) => {
       e.preventDefault();
-      player.jumpKeyReleased = true; // Allow double jump after releasing on desktop
+      isJumpPressed = false;
+      player.jump(isJumpPressed);
     });
   }

@@ -4,6 +4,9 @@ import { AudioManager } from './audioManager.js';
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded fired');
 
+  window.debug = true
+  
+
   // Log the full URL to debug
   const currentUrl = window.location.href;
   const urlParams = new URLSearchParams(window.location.search);

@@ -28,7 +28,7 @@ export function startGame(telegramData = {}) {
   const ctx = canvas.getContext("2d");
 
   canvas.width = 400;
-  canvas.height = 680; // Increased to match new canvas height
+  canvas.height = 680;
 
   let score = 0;
   let cameraY = 0;
@@ -39,7 +39,7 @@ export function startGame(telegramData = {}) {
   const player = new Player(canvas);
   const initialY = player.y;
 
-  let platforms = generatePlatforms(24, canvas.height, canvas.width); // Increased to 24 platforms to fill extra space
+  let platforms = generatePlatforms(24, canvas.height, canvas.width);
   setupControls(player);
 
   let obstacles = [];
@@ -100,9 +100,10 @@ export function startGame(telegramData = {}) {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Camera logic
-    if (player.y < canvas.height / 2) {
-      const distanceMoved = Math.abs(player.dy) * delta;
+    // Camera logic: Move only when player is significantly above the center
+    let distanceMoved = 0;
+    if (player.y < canvas.height / 3 && player.dy < 0 && !player.onGround) {
+      distanceMoved = Math.abs(player.dy) * delta;
       player.y += distanceMoved;
       platforms.forEach(p => p.y += distanceMoved);
       obstacles.forEach(o => o.y += distanceMoved);
@@ -125,8 +126,19 @@ export function startGame(telegramData = {}) {
     }
 
     // Maintain platform count
-    platforms = platforms.filter(p => p.y < canvas.height);
-    while (platforms.length < 12) { // Adjusted to maintain density with new height
+    platforms = platforms.filter(p => {
+      const pBottom = player.y + player.collHeight + player.collOffsetY;
+      const pLeft = player.x + player.collOffsetX;
+      const pRight = pLeft + player.collWidth;
+      const isPlayerOnPlatform =
+        player.onGround &&
+        pBottom >= p.y - 10 &&
+        pBottom <= p.y + 20 &&
+        pRight > p.x &&
+        pLeft < p.x + p.width;
+      return p.y < canvas.height || isPlayerOnPlatform;
+    });
+    while (platforms.length < 12) {
       const width = getRandomInt(50, 100);
       const x = getRandomInt(0, canvas.width - width);
       const y = platforms[platforms.length - 1].y - 100;
