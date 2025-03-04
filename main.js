@@ -75,14 +75,12 @@ function preloadAssets() {
         // For videos and audio, use 'onloadedmetadata' for reliability
         if (asset.type === 'video' || asset.type === 'audio') {
           element.onloadedmetadata = element.onload;
-          // Add a generic error handler for stalled loading
           element.onstalled = () => {
             console.warn(`Stalled loading ${asset.src}`);
             element.onerror();
           };
         }
 
-        // If the element is already complete (e.g., cached), trigger onload manually
         if (asset.type === 'image' && element.complete) {
           element.onload();
         }
@@ -91,17 +89,17 @@ function preloadAssets() {
   );
 }
 
-// Function to wait for Telegram.WebApp to initialize (with timeout)
-async function waitForTelegramWebApp(timeoutMs = 3000) {
+// Function to wait for Telegram.WebApp to initialize (with shorter timeout)
+async function waitForTelegramWebApp(timeoutMs = 1000) {
   const startTime = Date.now();
   while (Date.now() - startTime < timeoutMs) {
     if (window.Telegram?.WebApp) {
       console.log('Telegram.WebApp initialized:', window.Telegram.WebApp);
       return window.Telegram.WebApp;
     }
-    await new Promise(resolve => setTimeout(resolve, 100)); // Poll every 100ms
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
-  console.warn('Timeout waiting for Telegram.WebApp - assuming not in Telegram');
+  console.warn('Timeout waiting for Telegram.WebApp');
   return null;
 }
 
@@ -117,7 +115,6 @@ window.onload = async () => {
   const minimumLoadTime = new Promise(resolve => setTimeout(resolve, 1000));
 
   try {
-    // Preload all assets and wait for the minimum load time
     await Promise.all([preloadAssets(), minimumLoadTime]);
   } catch (error) {
     console.error('Error preloading assets:', error);
@@ -208,10 +205,12 @@ window.onload = async () => {
 
   // Asynchronously fetch Telegram context and update the game
   (async () => {
-    // Log the full URL to debug
+    // Log the full URL, user agent, and referrer to debug
     const currentUrl = window.location.href;
     const urlParams = new URLSearchParams(window.location.search);
     const paramsLog = Object.fromEntries(urlParams);
+    const userAgent = navigator.userAgent;
+    const referrer = document.referrer;
 
     // Send initial logs to Vercel
     fetch('https://goobi.vercel.app/api/log', {
@@ -221,6 +220,8 @@ window.onload = async () => {
         message: 'Game Loaded',
         url: currentUrl,
         params: paramsLog,
+        userAgent: userAgent,
+        referrer: referrer,
       }),
     }).catch(err => console.error('Failed to send log:', err));
 
@@ -273,8 +274,9 @@ window.onload = async () => {
     // Check if running in a testing environment (localhost or 127.0.0.1)
     const isTesting = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-    // Check if we have a Telegram context
-    const hasTelegramContext = telegramParams.userId || (telegramWebApp && typeof telegramWebApp === 'object');
+    // Check if we're likely in Telegram based on heuristics
+    const isLikelyInTelegram = userAgent.includes('Telegram') || referrer.includes('t.me');
+    const hasTelegramContext = telegramParams.userId || (telegramWebApp && typeof telegramWebApp === 'object') || isLikelyInTelegram;
     if (!hasTelegramContext) {
       fetch('https://goobi.vercel.app/api/log', {
         method: 'POST',
@@ -284,6 +286,8 @@ window.onload = async () => {
           telegramData: window.telegramData,
           telegramWebApp: telegramWebApp?.initDataUnsafe,
           url: window.location.href,
+          userAgent: userAgent,
+          referrer: referrer,
         }),
       }).catch(err => console.error('Failed to send error log:', err));
 
@@ -297,19 +301,18 @@ window.onload = async () => {
         const telegramErrorScreen = document.getElementById('telegramErrorScreen');
         telegramErrorScreen.style.display = 'flex';
 
-        // Add click handler for the "Open in Telegram" button
         const openInTelegramButton = document.getElementById('openInTelegramButton');
         openInTelegramButton.addEventListener('click', () => {
           window.location.href = 'https://t.me/goobigamebot';
         });
 
-        return; // Stop further execution
+        return;
       }
     }
 
     // Fallback to minimal context if in Telegram but userId is missing
-    if (!window.telegramData.userId && telegramWebApp) {
-      console.warn('userId missing but Telegram.WebApp present - using minimal context');
+    if (!window.telegramData.userId && (telegramWebApp || isLikelyInTelegram)) {
+      console.warn('userId missing but likely in Telegram - using minimal context');
       window.telegramData.userId = 'unknown';
       window.telegramData.username = 'UnknownUser';
       window.telegramData.highScoreHolder = 'None';
@@ -508,7 +511,7 @@ async function shareScoreToChat() {
         } else if (inlineId) {
           payload.inline_message_id = inlineId;
         }
-        if (Object.keys(payload).length > 1) { // Ensure we have chat_id/message_id or inline_message_id
+        if (Object.keys(payload).length > 1) {
           const highScoreResponse = await fetch('https://goobi.vercel.app/api/getHighScore', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -518,7 +521,6 @@ async function shareScoreToChat() {
           if (highScoreResult.ok) {
             highScore = highScoreResult.highScore;
             highScoreHolder = highScoreResult.highScoreHolder;
-            // Update telegramData
             window.telegramData.highScore = highScore;
             window.telegramData.highScoreHolder = highScoreHolder;
             console.log('Updated high score in telegramData:', { highScore, highScoreHolder });
