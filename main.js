@@ -250,7 +250,7 @@ window.updateShareCardPreview = async function() {
 };
 
 /**
- * Sends the score to the bot to share in Telegram
+ * Sends the score to the bot to share in Telegram and updates telegramData with the new high score
  */
 async function shareScoreToChat() {
   try {
@@ -294,6 +294,40 @@ async function shareScoreToChat() {
     const result = await response.json();
     if (response.ok || (result.error && result.error === 'BAD_REQUEST: BOT_SCORE_NOT_MODIFIED')) {
       console.log('Score submitted successfully:', shareText);
+
+      // Fetch the updated high score after submission
+      let highScore = window.telegramData.highScore;
+      let highScoreHolder = window.telegramData.highScoreHolder;
+      try {
+        const payload = { user_id: userId };
+        if (chatId && messageId) {
+          payload.chat_id = chatId;
+          payload.message_id = messageId;
+        } else if (inlineId) {
+          payload.inline_message_id = inlineId;
+        }
+        if (Object.keys(payload).length > 1) { // Ensure we have chat_id/message_id or inline_message_id
+          const highScoreResponse = await fetch('https://goobi.vercel.app/api/getHighScore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const highScoreResult = await highScoreResponse.json();
+          if (highScoreResult.ok) {
+            highScore = highScoreResult.highScore;
+            highScoreHolder = highScoreResult.highScoreHolder;
+            // Update telegramData
+            window.telegramData.highScore = highScore;
+            window.telegramData.highScoreHolder = highScoreHolder;
+            console.log('Updated high score in telegramData:', { highScore, highScoreHolder });
+          } else {
+            console.error('Failed to fetch updated high score:', highScoreResult);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching updated high score:', err);
+      }
+
       return true; // Indicate success
     } else {
       console.error('Failed to submit score:', response.statusText);
