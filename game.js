@@ -28,7 +28,7 @@ export function startGame(telegramData = {}) {
   const ctx = canvas.getContext("2d");
 
   canvas.width = 400;
-  canvas.height = 600;
+  canvas.height = 680; // Increased to match new canvas height
 
   let score = 0;
   let cameraY = 0;
@@ -39,7 +39,7 @@ export function startGame(telegramData = {}) {
   const player = new Player(canvas);
   const initialY = player.y;
 
-  let platforms = generatePlatforms(20, canvas.height, canvas.width);
+  let platforms = generatePlatforms(24, canvas.height, canvas.width); // Increased to 24 platforms to fill extra space
   setupControls(player);
 
   let obstacles = [];
@@ -126,7 +126,7 @@ export function startGame(telegramData = {}) {
 
     // Maintain platform count
     platforms = platforms.filter(p => p.y < canvas.height);
-    while (platforms.length < 10) {
+    while (platforms.length < 12) { // Adjusted to maintain density with new height
       const width = getRandomInt(50, 100);
       const x = getRandomInt(0, canvas.width - width);
       const y = platforms[platforms.length - 1].y - 100;
