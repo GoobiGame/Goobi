@@ -34,11 +34,11 @@ function preloadAssets() {
         } else if (asset.type === 'video') {
           element = document.createElement('video');
           element.muted = true;
-          element.preload = 'metadata'; // Changed back to 'metadata' for reliability
+          element.preload = 'metadata';
         } else if (asset.type === 'audio') {
           element = new Audio();
           element.muted = true;
-          element.preload = 'metadata'; // Changed back to 'metadata' for reliability
+          element.preload = 'metadata';
         }
 
         // Force reload to ensure onload fires even for cached assets
@@ -72,7 +72,7 @@ function preloadAssets() {
           resolve();
         };
 
-        // For videos and audio, use 'onloadedmetadata' instead of 'oncanplay' for reliability
+        // For videos and audio, use 'onloadedmetadata' for reliability
         if (asset.type === 'video' || asset.type === 'audio') {
           element.onloadedmetadata = element.onload;
           // Add a generic error handler for stalled loading
@@ -89,6 +89,20 @@ function preloadAssets() {
       });
     })
   );
+}
+
+// Function to wait for Telegram.WebApp to initialize (with timeout)
+async function waitForTelegramWebApp(timeoutMs = 3000) {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeoutMs) {
+    if (window.Telegram?.WebApp) {
+      console.log('Telegram.WebApp initialized:', window.Telegram.WebApp);
+      return window.Telegram.WebApp;
+    }
+    await new Promise(resolve => setTimeout(resolve, 100)); // Poll every 100ms
+  }
+  console.warn('Timeout waiting for Telegram.WebApp - assuming not in Telegram');
+  return null;
 }
 
 window.onload = async () => {
@@ -111,22 +125,6 @@ window.onload = async () => {
 
   // Hide loading screen after assets are loaded and minimum time has passed
   loadingScreen.style.display = 'none';
-
-  // Log the full URL to debug
-  const currentUrl = window.location.href;
-  const urlParams = new URLSearchParams(window.location.search);
-  const paramsLog = Object.fromEntries(urlParams);
-
-  // Send logs to Vercel
-  fetch('https://goobi.vercel.app/api/log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message: 'Game Loaded',
-      url: currentUrl,
-      params: paramsLog,
-    }),
-  }).catch(err => console.error('Failed to send log:', err));
 
   // Scale the game to fit the screen
   scaleGame();
@@ -164,143 +162,29 @@ window.onload = async () => {
     lastTouchEnd = now;
   }, { passive: false });
 
-  // Get Telegram info from URL parameters (primary) and Telegram.WebApp (secondary)
-  function getTelegramParams() {
-    // Initialize default values
-    let userId = null;
-    let chatId = null;
-    let inlineId = null;
-    let username = 'Player';
-    let photoUrl = null;
-    let highScore = 0;
-    let highScoreHolder = 'None';
-
-    // First, get parameters from the URL (primary source for Game API)
-    const urlParams = new URLSearchParams(window.location.search);
-    userId = urlParams.get('user_id') || null;
-    chatId = urlParams.get('chat_id') || null;
-    const messageId = urlParams.get('message_id') || null;
-    inlineId = urlParams.get('inline_message_id') || null;
-    username = urlParams.get('username') || username;
-    photoUrl = urlParams.get('photo_url') || null;
-    highScore = parseInt(urlParams.get('high_score')) || highScore;
-    highScoreHolder = urlParams.get('high_score_holder') || highScoreHolder;
-
-    // Check Telegram.WebApp for additional context (secondary source)
-    const telegramWebApp = window.Telegram?.WebApp?.initDataUnsafe;
-    if (telegramWebApp) {
-      console.log('Telegram.WebApp.initDataUnsafe:', telegramWebApp);
-      if (telegramWebApp.user) {
-        // Only override if URL parameters are missing
-        userId = userId || telegramWebApp.user.id?.toString();
-        username = telegramWebApp.user.username || telegramWebApp.user.first_name || username;
-        photoUrl = telegramWebApp.user.photo_url || photoUrl;
-      }
-      if (telegramWebApp.chat && !chatId) {
-        chatId = telegramWebApp.chat.id?.toString();
-      }
-    }
-
-    return {
-      userId,
-      chatId,
-      messageId,
-      inlineId,
-      username,
-      photoUrl,
-      highScore,
-      highScoreHolder,
-    };
-  }
-
-  const telegramParams = getTelegramParams();
+  // Initialize temporary telegramData to start the game immediately
   window.telegramData = {
-    username: telegramParams.username,
-    userId: telegramParams.userId,
-    chatId: telegramParams.chatId,
-    messageId: telegramParams.messageId,
-    inlineId: telegramParams.inlineId,
-    photoUrl: telegramParams.photoUrl,
-    highScore: telegramParams.highScore,
-    highScoreHolder: telegramParams.highScoreHolder,
+    username: 'Loading...',
+    userId: null,
+    chatId: null,
+    messageId: null,
+    inlineId: null,
+    photoUrl: null,
+    highScore: 0,
+    highScoreHolder: 'None',
   };
 
-  console.log('Telegram Parameters:', telegramParams);
-
-  // Check if running in a testing environment (localhost or 127.0.0.1)
-  const isTesting = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-  // Check if we have a Telegram context (require userId from URL or Telegram.WebApp)
-  const hasTelegramContext = telegramParams.userId || (window.Telegram?.WebApp?.initDataUnsafe?.user?.id);
-  if (!hasTelegramContext) {
-    fetch('https://goobi.vercel.app/api/log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: 'Error: Missing Telegram Context',
-        telegramData: window.telegramData,
-        telegramWebApp: window.Telegram?.WebApp?.initDataUnsafe,
-      }),
-    }).catch(err => console.error('Failed to send error log:', err));
-
-    if (isTesting) {
-      console.warn('Missing Telegram context. Using default context for testing.');
-      window.telegramData.username = 'TestUser';
-      window.telegramData.highScoreHolder = 'None';
-      window.telegramData.highScore = 0;
-    } else {
-      // Show the Telegram error screen
-      const telegramErrorScreen = document.getElementById('telegramErrorScreen');
-      telegramErrorScreen.style.display = 'flex';
-
-      // Add click handler for the "Open in Telegram" button
-      const openInTelegramButton = document.getElementById('openInTelegramButton');
-      openInTelegramButton.addEventListener('click', () => {
-        window.location.href = 'https://t.me/goobigamebot';
-      });
-
-      return; // Stop further execution
-    }
-  }
-
-  // Log any discrepancies between URL parameters and Telegram.WebApp
-  const telegramWebApp = window.Telegram?.WebApp?.initDataUnsafe;
-  if (telegramWebApp?.user?.id && telegramParams.userId && telegramWebApp.user.id.toString() !== telegramParams.userId) {
-    console.warn('Discrepancy between Telegram.WebApp userId and URL user_id:', {
-      telegramWebAppUserId: telegramWebApp.user.id,
-      urlUserId: telegramParams.userId,
-    });
-  }
-
-  // Send Telegram data to Vercel logs
-  fetch('https://goobi.vercel.app/api/log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message: 'Telegram Data',
-      telegramData: window.telegramData,
-    }),
-  }).catch(err => console.error('Failed to send Telegram data log:', err));
-
-  // Update UI with username and PFP
+  // Update UI with temporary username
   const currentUsername = document.getElementById("currentUsername");
   const headerAvatar = document.getElementById("userAvatar");
   if (currentUsername) {
-    currentUsername.textContent = `@${telegramParams.username}`;
+    currentUsername.textContent = `@${window.telegramData.username}`;
   }
   if (headerAvatar) {
-    if (telegramParams.photoUrl) {
-      headerAvatar.src = `/api/proxyPhoto?url=${encodeURIComponent(telegramParams.photoUrl)}`;
-      headerAvatar.onerror = () => {
-        console.error('Failed to load Telegram PFP:', telegramParams.photoUrl);
-        headerAvatar.src = 'assets/avatarFallback.png';
-      };
-    } else {
-      headerAvatar.src = 'assets/avatarFallback.png';
-    }
+    headerAvatar.src = 'assets/avatarFallback.png';
   }
 
-  // Start screen logic
+  // Start the game immediately with temporary context
   if (sessionStorage.getItem('skipStartScreen') === 'true') {
     startGame(window.telegramData);
   } else {
@@ -308,11 +192,9 @@ window.onload = async () => {
     const startVideo = document.getElementById('startVideo');
     const startButton = document.getElementById('startButton');
     startScreen.style.display = 'flex';
-
     if (startVideo) {
       startVideo.play().catch(err => console.log('startVideo play error:', err));
     }
-
     startButton.addEventListener('click', () => {
       sessionStorage.setItem('skipStartScreen', 'true');
       startScreen.style.display = 'none';
@@ -323,6 +205,151 @@ window.onload = async () => {
       startGame(window.telegramData);
     });
   }
+
+  // Asynchronously fetch Telegram context and update the game
+  (async () => {
+    // Log the full URL to debug
+    const currentUrl = window.location.href;
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramsLog = Object.fromEntries(urlParams);
+
+    // Send initial logs to Vercel
+    fetch('https://goobi.vercel.app/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Game Loaded',
+        url: currentUrl,
+        params: paramsLog,
+      }),
+    }).catch(err => console.error('Failed to send log:', err));
+
+    // Get Telegram info from URL parameters (primary)
+    function getTelegramParams() {
+      const urlParams = new URLSearchParams(window.location.search);
+      return {
+        userId: urlParams.get('user_id') || null,
+        chatId: urlParams.get('chat_id') || null,
+        messageId: urlParams.get('message_id') || null,
+        inlineId: urlParams.get('inline_message_id') || null,
+        username: urlParams.get('username') || 'Player',
+        photoUrl: urlParams.get('photo_url') || null,
+        highScore: parseInt(urlParams.get('high_score')) || 0,
+        highScoreHolder: urlParams.get('high_score_holder') || 'None',
+      };
+    }
+
+    // Wait for Telegram.WebApp to initialize
+    const telegramWebApp = await waitForTelegramWebApp();
+
+    const telegramParams = getTelegramParams();
+    window.telegramData = {
+      username: telegramParams.username,
+      userId: telegramParams.userId,
+      chatId: telegramParams.chatId,
+      messageId: telegramParams.messageId,
+      inlineId: telegramParams.inlineId,
+      photoUrl: telegramParams.photoUrl,
+      highScore: telegramParams.highScore,
+      highScoreHolder: telegramParams.highScoreHolder,
+    };
+
+    // Update telegramData with Telegram.WebApp data if available
+    if (telegramWebApp?.initDataUnsafe) {
+      console.log('Telegram.WebApp.initDataUnsafe:', telegramWebApp.initDataUnsafe);
+      if (telegramWebApp.initDataUnsafe.user) {
+        window.telegramData.userId = window.telegramData.userId || telegramWebApp.initDataUnsafe.user.id?.toString();
+        window.telegramData.username = telegramWebApp.initDataUnsafe.user.username || telegramWebApp.initDataUnsafe.user.first_name || window.telegramData.username;
+        window.telegramData.photoUrl = telegramWebApp.initDataUnsafe.user.photo_url || window.telegramData.photoUrl;
+      }
+      if (telegramWebApp.initDataUnsafe.chat && !window.telegramData.chatId) {
+        window.telegramData.chatId = telegramWebApp.initDataUnsafe.chat.id?.toString();
+      }
+    }
+
+    console.log('Telegram Parameters:', telegramParams);
+    console.log('Final telegramData:', window.telegramData);
+
+    // Check if running in a testing environment (localhost or 127.0.0.1)
+    const isTesting = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    // Check if we have a Telegram context
+    const hasTelegramContext = telegramParams.userId || (telegramWebApp && typeof telegramWebApp === 'object');
+    if (!hasTelegramContext) {
+      fetch('https://goobi.vercel.app/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Error: Missing Telegram Context',
+          telegramData: window.telegramData,
+          telegramWebApp: telegramWebApp?.initDataUnsafe,
+          url: window.location.href,
+        }),
+      }).catch(err => console.error('Failed to send error log:', err));
+
+      if (isTesting) {
+        console.warn('Missing Telegram context. Using default context for testing.');
+        window.telegramData.username = 'TestUser';
+        window.telegramData.highScoreHolder = 'None';
+        window.telegramData.highScore = 0;
+      } else {
+        // Show the Telegram error screen
+        const telegramErrorScreen = document.getElementById('telegramErrorScreen');
+        telegramErrorScreen.style.display = 'flex';
+
+        // Add click handler for the "Open in Telegram" button
+        const openInTelegramButton = document.getElementById('openInTelegramButton');
+        openInTelegramButton.addEventListener('click', () => {
+          window.location.href = 'https://t.me/goobigamebot';
+        });
+
+        return; // Stop further execution
+      }
+    }
+
+    // Fallback to minimal context if in Telegram but userId is missing
+    if (!window.telegramData.userId && telegramWebApp) {
+      console.warn('userId missing but Telegram.WebApp present - using minimal context');
+      window.telegramData.userId = 'unknown';
+      window.telegramData.username = 'UnknownUser';
+      window.telegramData.highScoreHolder = 'None';
+      window.telegramData.highScore = 0;
+    }
+
+    // Log any discrepancies between URL parameters and Telegram.WebApp
+    if (telegramWebApp?.initDataUnsafe?.user?.id && telegramParams.userId && telegramWebApp.initDataUnsafe.user.id.toString() !== telegramParams.userId) {
+      console.warn('Discrepancy between Telegram.WebApp userId and URL user_id:', {
+        telegramWebAppUserId: telegramWebApp.initDataUnsafe.user.id,
+        urlUserId: telegramParams.userId,
+      });
+    }
+
+    // Send Telegram data to Vercel logs
+    fetch('https://goobi.vercel.app/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Telegram Data',
+        telegramData: window.telegramData,
+      }),
+    }).catch(err => console.error('Failed to send Telegram data log:', err));
+
+    // Update UI with final Telegram context
+    if (currentUsername) {
+      currentUsername.textContent = `@${window.telegramData.username}`;
+    }
+    if (headerAvatar) {
+      if (window.telegramData.photoUrl) {
+        headerAvatar.src = `/api/proxyPhoto?url=${encodeURIComponent(window.telegramData.photoUrl)}`;
+        headerAvatar.onerror = () => {
+          console.error('Failed to load Telegram PFP:', window.telegramData.photoUrl);
+          headerAvatar.src = 'assets/avatarFallback.png';
+        };
+      } else {
+        headerAvatar.src = 'assets/avatarFallback.png';
+      }
+    }
+  })();
 };
 
 /**
