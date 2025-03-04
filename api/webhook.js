@@ -63,18 +63,32 @@ bot.on('callback_query', async (ctx) => {
         console.error('Error fetching user details:', err);
       }
 
-      // Fetch high score for the game message
+      // Fetch high score for the game message using a direct API call
       let highScore = 0;
       let highScoreHolder = null;
       try {
+        let payload = { user_id: userId };
         if (stored && stored.chatId && stored.messageId) {
-          const highScores = await ctx.telegram.getGameHighScores(userId, {
-            chat_id: stored.chatId,
-            message_id: stored.messageId,
+          payload.chat_id = stored.chatId;
+          payload.message_id = stored.messageId;
+        } else if (stored && stored.inlineId) {
+          payload.inline_message_id = stored.inlineId;
+        }
+        if (Object.keys(payload).length > 1) { // Ensure we have chat_id/message_id or inline_message_id
+          const response = await fetch(`https://api.telegram.org/bot${TOKEN}/getGameHighScores`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
           });
-          if (highScores.length > 0) {
-            highScore = highScores[0].score;
-            highScoreHolder = highScores[0].user.username || highScores[0].user.first_name || 'Unknown';
+          const result = await response.json();
+          if (result.ok) {
+            const highScores = result.result;
+            if (highScores.length > 0) {
+              highScore = highScores[0].score;
+              highScoreHolder = highScores[0].user.username || highScores[0].user.first_name || 'Unknown';
+            }
+          } else {
+            console.error('Failed to fetch high scores:', result);
           }
         }
       } catch (err) {
@@ -83,8 +97,13 @@ bot.on('callback_query', async (ctx) => {
 
       // Construct the game URL with chatId, messageId, username, photo URL, and high score
       let gameUrl = GAME_URL;
-      if (stored && stored.chatId && stored.messageId) {
-        gameUrl = `${GAME_URL}?user_id=${userId}&chat_id=${stored.chatId}&message_id=${stored.messageId}`;
+      if (stored && (stored.chatId || stored.inlineId)) {
+        gameUrl = `${GAME_URL}?user_id=${userId}`;
+        if (stored.chatId && stored.messageId) {
+          gameUrl += `&chat_id=${stored.chatId}&message_id=${stored.messageId}`;
+        } else if (stored.inlineId) {
+          gameUrl += `&inline_message_id=${stored.inlineId}`;
+        }
         gameUrl += `&username=${encodeURIComponent(username)}`;
         if (photoUrl) {
           gameUrl += `&photo_url=${encodeURIComponent(photoUrl)}`;
@@ -146,20 +165,26 @@ bot.command('setscore', async (ctx) => {
     console.log(`Attempting setscore for user=${userId}, score=${newScore}`);
     console.log('stored =', stored);
 
-    let options = {};
+    let payload = { user_id: userId, score: newScore, force: true };
     if (stored.chatId && stored.messageId) {
-      options.chat_id = stored.chatId;
-      options.message_id = stored.messageId;
+      payload.chat_id = stored.chatId;
+      payload.message_id = stored.messageId;
     } else if (stored.inlineId) {
-      options.inline_message_id = stored.inlineId;
+      payload.inline_message_id = stored.inlineId;
     } else {
       return ctx.reply('No valid chat or inline data stored.');
     }
 
-    await ctx.telegram.setGameScore(userId, newScore, {
-      ...options,
-      force: true,
+    const response = await fetch(`https://api.telegram.org/bot${TOKEN}/setGameScore`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
+    const result = await response.json();
+    if (!result.ok) {
+      console.error('Failed to set score:', result);
+      throw new Error(result.description);
+    }
 
     await ctx.reply(`Score of ${newScore} set for @${ctx.from.username || 'user'}. Check the game message!`);
   } catch (err) {
