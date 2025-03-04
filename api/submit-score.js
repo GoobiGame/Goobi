@@ -16,13 +16,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'Missing userId or score' });
   }
 
-  let options = {};
+  let options = { edit_message: true };
+  let mode = '';
+
   if (chatId && messageId) {
     options.chat_id = chatId;
     options.message_id = messageId;
+    mode = 'chat';
     console.log('Using chat mode:', options);
   } else if (inlineId && typeof inlineId === 'string') {
     options.inline_message_id = inlineId;
+    mode = 'inline';
     console.log('Using inline mode:', options);
   } else {
     console.log('Invalid context: no valid chat or inline ID');
@@ -30,10 +34,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    await bot.telegram.setGameScore(userId, score, {
+    console.log(`Calling setGameScore in ${mode} mode with payload:`, {
+      user_id: userId,
+      score,
       ...options,
-      edit_message: true,
     });
+    await bot.telegram.setGameScore(userId, score, options);
     console.log('Score set successfully');
     return res.status(200).json({ ok: true });
   } catch (err) {
