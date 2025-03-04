@@ -6,8 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
   <title>Goobi</title>
 
-  <!-- Removed telegram-web-app.js since we are not using WebApp anymore -->
-
   <style>
     /* GLOBAL RESET */
     * {
@@ -196,7 +194,7 @@
       z-index: 1000;
       display: none;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: space-between; /* Keeps share card at the bottom */
       align-items: center;
     }
     #gameOverScreen video {
@@ -209,12 +207,24 @@
       z-index: 0;
       pointer-events: none;
     }
+    #gameOverHeader {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 1;
+    }
     #gameOverMessage {
       position: relative;
-      z-index: 1;
       font-size: 3em;
       margin-top: 50px;
       text-align: center;
+    }
+    #gameOverOkButton {
+      position: relative;
+      margin-top: 10px;
+      margin-bottom: 20px;
+      padding: 10px 20px;
+      font-size: 1.2em;
     }
     #gameOverActions {
       position: relative;
@@ -222,18 +232,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-bottom: 50px;
+      margin-bottom: 50px; /* Keeps the share card near the bottom */
     }
     #shareCardPreview {
       max-width: 80%;
       border: 2px solid #fff;
       margin: 10px 0;
-      display: none;
-    }
-    #gameOverActions button {
-      margin: 5px;
-      padding: 10px 20px;
-      font-size: 1.2em;
+      display: block;
     }
   </style>
 </head>
@@ -282,11 +287,12 @@
       <video id="gameOverVideo" loop muted playsinline autoplay>
         <source src="assets/gameOver.mp4" type="video/mp4">
       </video>
-      <h1 id="gameOverMessage">Game Over</h1>
-      <div id="gameOverActions">
-        <img id="shareCardPreview" src="" alt="Share Card Preview" style="display:none;">
+      <div id="gameOverHeader">
+        <h1 id="gameOverMessage">Game Over</h1>
         <button id="gameOverOkButton">Play Again</button>
-        <!-- Removed Share to Telegram button -->
+      </div>
+      <div id="gameOverActions">
+        <img id="shareCardPreview" src="" alt="Share Card Preview" style="display:block;">
       </div>
     </div>
   </div>

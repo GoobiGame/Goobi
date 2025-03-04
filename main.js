@@ -207,7 +207,7 @@ function generateShareCardDataURL() {
         drawCenteredText(ctx, 'New Personal High Score!', scoreY - 60, '60px sans-serif', 'red');
       }
       const scoreLine = `Score: ${finalScore}`;
-      drawCenteredText(ctx, scoreLine, scoreY, '80px sans-serif', 'white');
+      drawCenteredText(ctx, scoreLine, scoreY, '160px sans-serif', 'white'); // Increased font size to 160px
 
       const dataURL = canvas.toDataURL('image/png');
       resolve(dataURL);
@@ -226,7 +226,7 @@ function generateShareCardDataURL() {
         drawCenteredText(ctx, 'New Personal High Score!', scoreY - 60, '60px sans-serif', 'red');
       }
       const scoreLine = `Score: ${finalScore}`;
-      drawCenteredText(ctx, scoreLine, scoreY, '80px sans-serif', 'white');
+      drawCenteredText(ctx, scoreLine, scoreY, '160px sans-serif', 'white'); // Increased font size to 160px
 
       const dataURL = canvas.toDataURL('image/png');
       resolve(dataURL);
