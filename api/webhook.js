@@ -35,6 +35,29 @@ bot.command('start', async (ctx) => {
 });
 
 /**
+ * /help command: Sends a detailed message explaining how to play Goobi
+ */
+bot.command('help', async (ctx) => {
+  try {
+    console.log('Processing /help command for user:', ctx.from.id);
+    const helpMessage = `How to Play Goobi 🕹️\n` +
+      `Jump across endless platforms and avoid obstacles to survive!\n\n` +
+      `🎮 Controls:\n` +
+      `   Move The Joystick Overlay - Left/Right (Mobile)\n` +
+      `   Use ←/→ keys or A/D Keys - Left/Right (Desktop)\n` +
+      `   Use Touch Button On The Right - Jump (Mobile)\n` +
+      `   Use Space Bar or W Key - Jump (Desktop)\n` +
+      `🎯 Goal: Get The Highest Score By Staying Alive!\n` +
+      `🔊 Tap The Mute Button To Toggle Sound (🔇/🔊).\n` +
+      `🏆 The Score Updates Automatically In Chat After Each Round`;
+    await ctx.reply(helpMessage);
+  } catch (err) {
+    console.error('Error in /help command:', err);
+    await ctx.reply('Something went wrong with /help.');
+  }
+});
+
+/**
  * When someone taps "Play goobi"
  */
 bot.on('callback_query', async (ctx) => {
@@ -78,7 +101,6 @@ bot.on('callback_query', async (ctx) => {
         } else if (stored && stored.inlineId) {
           payload.inline_message_id = stored.inlineId;
         } else if (chatId && messageId) {
-          // Use chatId and messageId from the callback query if stored data is missing
           payload.chat_id = chatId;
           payload.message_id = messageId;
         }
@@ -213,9 +235,9 @@ export default async function handler(req, res) {
     } else {
       return res.status(405).send('Method Not Allowed');
     }
-  } catch (error) {
-    console.error('Error processing update:', error);
-    return res.status(500).json({ ok: false, error: error.toString() });
+  } catch (err) {
+    console.error('Error processing update:', err);
+    return res.status(500).json({ ok: false, error: err.toString() });
   }
 }
 
