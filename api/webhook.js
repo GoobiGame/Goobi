@@ -72,12 +72,14 @@ bot.command('leaderboard', async (ctx) => {
     }
 
     // Prepare payload for getGameHighScores
-    let payload = {};
+    let payload = { user_id: userId }; // Include user_id to avoid invalid user_id error
     if (stored.chatId && stored.messageId) {
       payload.chat_id = stored.chatId;
       payload.message_id = stored.messageId;
+      console.log(`Fetching leaderboard for chat_id=${stored.chatId}, message_id=${stored.messageId}`);
     } else if (stored.inlineId) {
       payload.inline_message_id = stored.inlineId;
+      console.log(`Fetching leaderboard for inline_message_id=${stored.inlineId}`);
     }
 
     // Fetch the top scores using getGameHighScores
