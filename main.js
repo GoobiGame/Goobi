@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Prevent unwanted gestures and menus
-  const canvas = document.getElementById('gameCanvas');
+  const canvas = document.getElementById("gameCanvas");
   if (canvas) {
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
@@ -64,17 +64,24 @@ document.addEventListener('DOMContentLoaded', () => {
       chatId: urlParams.get('chat_id') || null,
       messageId: urlParams.get('message_id') || null,
       inlineId: urlParams.get('inline_message_id') || null,
+      username: urlParams.get('username') || 'Player',
+      photoUrl: urlParams.get('photo_url') || null,
+      highScore: parseInt(urlParams.get('high_score')) || 0,
+      highScoreHolder: urlParams.get('high_score_holder') || 'None',
     };
     return params;
   }
 
   const telegramParams = getTelegramParams();
   window.telegramData = {
-    username: telegramParams.userId ? `Player_${telegramParams.userId}` : 'Player',
+    username: telegramParams.username,
     userId: telegramParams.userId,
     chatId: telegramParams.chatId,
     messageId: telegramParams.messageId,
     inlineId: telegramParams.inlineId,
+    photoUrl: telegramParams.photoUrl,
+    highScore: telegramParams.highScore,
+    highScoreHolder: telegramParams.highScoreHolder,
   };
 
   // Check if we have the necessary parameters
@@ -99,6 +106,24 @@ document.addEventListener('DOMContentLoaded', () => {
       telegramData: window.telegramData,
     }),
   }).catch(err => console.error('Failed to send Telegram data log:', err));
+
+  // Update UI with username and PFP
+  const currentUsername = document.getElementById("currentUsername");
+  const headerAvatar = document.getElementById("userAvatar");
+  if (currentUsername) {
+    currentUsername.textContent = `@${telegramParams.username}`;
+  }
+  if (headerAvatar) {
+    if (telegramParams.photoUrl) {
+      headerAvatar.src = `/api/proxyPhoto?url=${encodeURIComponent(telegramParams.photoUrl)}`;
+      headerAvatar.onerror = () => {
+        console.error('Failed to load Telegram PFP:', telegramParams.photoUrl);
+        headerAvatar.src = 'assets/avatarFallback.png';
+      };
+    } else {
+      headerAvatar.src = 'assets/avatarFallback.png';
+    }
+  }
 
   // Start screen logic
   if (sessionStorage.getItem('skipStartScreen') === 'true') {
@@ -174,36 +199,18 @@ function generateShareCardDataURL() {
     bgImg.onload = () => {
       ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
-      const username = window.telegramData?.username || 'Player';
       const finalScore = window.finalScore ?? 0;
       const newHigh = window.isNewHighScore === true;
 
-      const pfpSize = 200;
-      const pfpX = (canvas.width - pfpSize) / 2;
-      const pfpY = 50;
-
-      const pfpImg = new Image();
-      pfpImg.src = 'assets/avatarFallback.png';
-      pfpImg.onload = () => {
-        ctx.drawImage(pfpImg, pfpX, pfpY, pfpSize, pfpSize);
-        renderText();
-      };
-      pfpImg.onerror = () => {
-        console.error('Failed to load fallback avatar');
-        renderText();
-      };
-
-      function renderText() {
-        const mainLineY = pfpY + pfpSize + 70;
-        if (newHigh) {
-          drawCenteredText(ctx, 'New Personal High Score!', mainLineY - 120, '100px sans-serif', 'red');
-        }
-        const mainLine = `@${username} - Score: ${finalScore}`;
-        drawCenteredText(ctx, mainLine, mainLineY, '100px sans-serif', 'white');
-
-        const dataURL = canvas.toDataURL('image/png');
-        resolve(dataURL);
+      const scoreY = 270;
+      if (newHigh) {
+        drawCenteredText(ctx, 'New Personal High Score!', scoreY - 60, '60px sans-serif', 'red');
       }
+      const scoreLine = `Score: ${finalScore}`;
+      drawCenteredText(ctx, scoreLine, scoreY, '80px sans-serif', 'white');
+
+      const dataURL = canvas.toDataURL('image/png');
+      resolve(dataURL);
     };
 
     bgImg.onerror = (err) => {
@@ -211,16 +218,15 @@ function generateShareCardDataURL() {
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const username = window.telegramData?.username || 'Player';
       const finalScore = window.finalScore ?? 0;
       const newHigh = window.isNewHighScore === true;
-      const mainLineY = 270;
+      const scoreY = 270;
 
       if (newHigh) {
-        drawCenteredText(ctx, 'New Personal High Score!', mainLineY - 60, '60px sans-serif', 'red');
+        drawCenteredText(ctx, 'New Personal High Score!', scoreY - 60, '60px sans-serif', 'red');
       }
-      const mainLine = `@${username} - Score: ${finalScore}`;
-      drawCenteredText(ctx, mainLine, mainLineY, '80px sans-serif', 'white');
+      const scoreLine = `Score: ${finalScore}`;
+      drawCenteredText(ctx, scoreLine, scoreY, '80px sans-serif', 'white');
 
       const dataURL = canvas.toDataURL('image/png');
       resolve(dataURL);

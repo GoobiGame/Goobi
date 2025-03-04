@@ -3,7 +3,6 @@ import { Platform, generatePlatforms } from './platform.js';
 import { setupControls } from './controls.js';
 import { getRandomInt } from './utils.js';
 import { Obstacle } from './obstacle.js';
-import { ScoreManager } from './scoreManager.js'; // Local high score logic
 
 // Load background tile
 const tileImg = new Image();
@@ -34,7 +33,6 @@ export function startGame(telegramData = {}) {
   let score = 0;
   let cameraY = 0;
   let highestWorldY = 0;
-  let newHighScoreAchieved = false;
 
   const playerUsername = telegramData.username || 'Player';
 
@@ -55,17 +53,14 @@ export function startGame(telegramData = {}) {
   // DOM elements for score display
   const currentUsername = document.getElementById("currentUsername");
   const currentScore = document.getElementById("currentScore");
-  const highScoreUsername = document.getElementById("highScoreUsername");
-  const highScore = document.getElementById("highScore");
+  const highScoreHolder = document.getElementById("highScoreUsername");
+  const highScoreDisplay = document.getElementById("highScore");
 
   // Set initial UI
   currentUsername.textContent = `@${playerUsername}`;
   currentScore.textContent = `Score: 0`;
-
-  // Load local high score
-  const localHigh = ScoreManager.getHighScore();
-  highScoreUsername.textContent = ``;              // Blank out the label
-  highScore.textContent = `High Score: ${localHigh}`;  // Just says "High Score"
+  highScoreHolder.textContent = telegramData.highScoreHolder;
+  highScoreDisplay.textContent = `High: ${telegramData.highScore || 0}`;
 
   // Game Over elements
   const gameOverScreen = document.getElementById("gameOverScreen");
@@ -80,7 +75,7 @@ export function startGame(telegramData = {}) {
     gameOverVideo.pause();
     gameOverVideo.currentTime = 0;
     gameOverScreen.style.display = "none";
-    startGame({ username: playerUsername });
+    startGame(telegramData);
   });
 
   let lastScore = 0;
@@ -194,16 +189,6 @@ export function startGame(telegramData = {}) {
 
   async function handleGameOver() {
     window.finalScore = score;
-
-    // Update local high score
-    const prevHigh = ScoreManager.getHighScore();
-    if (score > prevHigh) {
-      newHighScoreAchieved = true;
-      ScoreManager.updateHighScore(score);
-      console.log("New local high score!");
-    } else {
-      newHighScoreAchieved = false;
-    }
 
     // Share the score automatically
     try {

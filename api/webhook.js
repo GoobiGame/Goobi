@@ -45,10 +45,51 @@ bot.on('callback_query', async (ctx) => {
       const userId = ctx.from.id;
       const stored = cachedGameMessage[userId];
 
-      // Construct the game URL with chatId and messageId
+      // Fetch user details (username and PFP)
+      let username = 'Player';
+      let photoUrl = null;
+      try {
+        const user = await ctx.telegram.getChat(userId);
+        if (user) {
+          username = user.username || user.first_name || 'Player';
+        }
+        const photos = await ctx.telegram.getUserProfilePhotos(userId, { limit: 1 });
+        if (photos.total_count > 0) {
+          const fileId = photos.photos[0][0].file_id;
+          const file = await ctx.telegram.getFile(fileId);
+          photoUrl = `https://api.telegram.org/file/bot${TOKEN}/${file.file_path}`;
+        }
+      } catch (err) {
+        console.error('Error fetching user details:', err);
+      }
+
+      // Fetch high score for the game message
+      let highScore = 0;
+      let highScoreHolder = null;
+      try {
+        if (stored && stored.chatId && stored.messageId) {
+          const highScores = await ctx.telegram.getGameHighScores(userId, {
+            chat_id: stored.chatId,
+            message_id: stored.messageId,
+          });
+          if (highScores.length > 0) {
+            highScore = highScores[0].score;
+            highScoreHolder = highScores[0].user.username || highScores[0].user.first_name || 'Unknown';
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching high scores:', err);
+      }
+
+      // Construct the game URL with chatId, messageId, username, photo URL, and high score
       let gameUrl = GAME_URL;
       if (stored && stored.chatId && stored.messageId) {
         gameUrl = `${GAME_URL}?user_id=${userId}&chat_id=${stored.chatId}&message_id=${stored.messageId}`;
+        gameUrl += `&username=${encodeURIComponent(username)}`;
+        if (photoUrl) {
+          gameUrl += `&photo_url=${encodeURIComponent(photoUrl)}`;
+        }
+        gameUrl += `&high_score=${highScore}&high_score_holder=${encodeURIComponent(highScoreHolder || 'None')}`;
       }
       console.log('Providing game URL:', gameUrl);
       await ctx.answerGameQuery(gameUrl);
