@@ -34,17 +34,27 @@ function preloadAssets() {
         } else if (asset.type === 'video') {
           element = document.createElement('video');
           element.muted = true;
-          element.preload = 'auto';
+          element.preload = 'metadata'; // Changed back to 'metadata' for reliability
         } else if (asset.type === 'audio') {
           element = new Audio();
           element.muted = true;
-          element.preload = 'auto';
+          element.preload = 'metadata'; // Changed back to 'metadata' for reliability
         }
 
         // Force reload to ensure onload fires even for cached assets
         element.src = asset.src + '?t=' + new Date().getTime();
 
+        // Timeout to prevent stalling (5 seconds)
+        const timeout = setTimeout(() => {
+          console.warn(`Timeout loading ${asset.src} - proceeding anyway`);
+          loadedAssets++;
+          const progress = (loadedAssets / totalAssets) * 100;
+          loadingProgressBar.style.width = `${progress}%`;
+          resolve();
+        }, 5000);
+
         element.onload = () => {
+          clearTimeout(timeout);
           loadedAssets++;
           const progress = (loadedAssets / totalAssets) * 100;
           console.log(`Loaded ${asset.src} - Progress: ${progress}%`);
@@ -53,6 +63,7 @@ function preloadAssets() {
         };
 
         element.onerror = () => {
+          clearTimeout(timeout);
           console.error(`Failed to load asset: ${asset.src}`);
           loadedAssets++;
           const progress = (loadedAssets / totalAssets) * 100;
@@ -61,10 +72,17 @@ function preloadAssets() {
           resolve();
         };
 
+        // For videos and audio, use 'onloadedmetadata' instead of 'oncanplay' for reliability
         if (asset.type === 'video' || asset.type === 'audio') {
-          element.oncanplay = element.onload;
+          element.onloadedmetadata = element.onload;
+          // Add a generic error handler for stalled loading
+          element.onstalled = () => {
+            console.warn(`Stalled loading ${asset.src}`);
+            element.onerror();
+          };
         }
 
+        // If the element is already complete (e.g., cached), trigger onload manually
         if (asset.type === 'image' && element.complete) {
           element.onload();
         }
