@@ -127,8 +127,8 @@
     }
     #joystick {
       position: absolute;
-      bottom: 100px; /* Position ~100px from the bottom */
-      left: 20px; /* Slightly more padding from the left edge */
+      bottom: 100px;
+      left: 20px;
       width: 80px;
       height: 80px;
       border-radius: 50%;
@@ -138,7 +138,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 2000;
+      z-index: 500; /* Lowered to be behind Start and Game Over screens */
     }
     #joystickThumb {
       width: 40px;
@@ -147,7 +147,7 @@
       background: radial-gradient(circle, rgba(0, 153, 255, 0.8), rgba(0, 102, 204, 0.6));
       border: 1px solid rgba(255, 255, 255, 0.8);
       position: absolute;
-      transition: transform 0.1s; /* Smooth movement */
+      transition: transform 0.1s;
     }
     #jumpControl {
       position: absolute;
@@ -162,7 +162,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 2000;
+      z-index: 500; /* Lowered to be behind Start and Game Over screens */
     }
     #jumpBtn {
       width: 100%;
@@ -170,7 +170,7 @@
       border-radius: 50%;
       background: none;
       border: none;
-      color: transparent; /* No text, just a tappable area */
+      color: transparent;
       cursor: pointer;
     }
     #jumpControl:hover, #joystick:hover {
