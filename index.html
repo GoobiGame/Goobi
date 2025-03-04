@@ -93,7 +93,7 @@
       top: 60px;
       right: 10px;
       padding: 6px 10px;
-      font-size: 2.2rem;
+      font-size: 1.2rem;
       background: none;
       color: greenyellow;
       border: none;
@@ -187,6 +187,42 @@
       }
     }
 
+    /* LOADING SCREEN overlay – shown by default */
+    #loadingScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      overflow: hidden;
+      z-index: 3000;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 20px;
+    }
+    #loadingMessage {
+      font-size: 1.5em;
+      margin-bottom: 20px;
+    }
+    #loadingProgressBar {
+      width: 80%;
+      height: 20px;
+      background: #333;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    #loadingProgress {
+      width: 0%;
+      height: 100%;
+      background: #0088cc;
+      transition: width 0.3s ease;
+    }
+
     /* START SCREEN overlay – hidden by default */
     #startScreen {
       position: absolute;
@@ -197,7 +233,7 @@
       background: rgba(0,0,0,0.7);
       overflow: hidden;
       z-index: 1000;
-      display: none;
+      display: none; /* Changed to none to hide initially */
       flex-direction: column;
       justify-content: center;
       align-items: center;
@@ -280,10 +316,53 @@
       margin: 10px 0;
       display: block;
     }
+
+    /* TELEGRAM ERROR SCREEN overlay – hidden by default */
+    #telegramErrorScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      overflow: hidden;
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 20px;
+    }
+    #telegramErrorMessage {
+      font-size: 1.5em;
+      margin-bottom: 20px;
+    }
+    #openInTelegramButton {
+      padding: 10px 20px;
+      font-size: 1.2em;
+      background: #0088cc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #openInTelegramButton:hover {
+      background: #006699;
+    }
   </style>
 </head>
 <body>
   <div id="gameWrapper">
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+      <h1 id="loadingMessage">Loading Goobi...</h1>
+      <div id="loadingProgressBar">
+        <div id="loadingProgress"></div>
+      </div>
+    </div>
+
     <!-- Header -->
     <div id="header">
       <img id="userAvatar" src="" alt="Profile">
@@ -333,6 +412,12 @@
       <div id="gameOverActions">
         <img id="shareCardPreview" src="" alt="Share Card Preview" style="display:block;">
       </div>
+    </div>
+
+    <!-- Telegram Error Screen -->
+    <div id="telegramErrorScreen">
+      <h1 id="telegramErrorMessage">Please open the game in Telegram</h1>
+      <button id="openInTelegramButton">Open in Telegram</button>
     </div>
   </div>
 

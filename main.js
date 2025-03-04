@@ -1,11 +1,100 @@
 import { startGame } from './game.js';
 import { AudioManager } from './audioManager.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOMContentLoaded fired');
+// Function to preload assets and return a Promise
+function preloadAssets() {
+  const assets = [
+    // Images
+    { type: 'image', src: 'assets/platform.svg' },
+    { type: 'image', src: 'assets/obstacle.png' },
+    { type: 'image', src: 'assets/backgroundTile.svg' },
+    { type: 'image', src: 'assets/idleBoard.png' },
+    { type: 'image', src: 'assets/rollBoard.png' },
+    { type: 'image', src: 'assets/jumpBoard.png' },
+    { type: 'image', src: 'assets/card.png' }, // Used in generateShareCardDataURL
+    { type: 'image', src: 'assets/avatarFallback.png' }, // Used as fallback for user avatar
+    // Videos
+    { type: 'video', src: 'assets/start.mp4' },
+    { type: 'video', src: 'assets/gameOver.mp4' },
+    // Audio
+    { type: 'audio', src: 'assets/themeMusic.wav' },
+  ];
 
-  window.debug = false
-  
+  const totalAssets = assets.length;
+  let loadedAssets = 0;
+
+  const loadingProgressBar = document.getElementById('loadingProgress');
+
+  return Promise.all(
+    assets.map(asset => {
+      return new Promise((resolve, reject) => {
+        let element;
+        if (asset.type === 'image') {
+          element = new Image();
+        } else if (asset.type === 'video') {
+          element = document.createElement('video');
+          element.muted = true;
+          element.preload = 'metadata';
+        } else if (asset.type === 'audio') {
+          element = new Audio();
+          element.muted = true;
+          element.preload = 'metadata';
+        }
+
+        // Force reload to ensure onload fires even for cached assets
+        element.src = asset.src + '?t=' + new Date().getTime();
+
+        element.onload = () => {
+          loadedAssets++;
+          const progress = (loadedAssets / totalAssets) * 100;
+          console.log(`Loaded ${asset.src} - Progress: ${progress}%`);
+          loadingProgressBar.style.width = `${progress}%`;
+          resolve();
+        };
+
+        element.onerror = () => {
+          console.error(`Failed to load asset: ${asset.src}`);
+          loadedAssets++;
+          const progress = (loadedAssets / totalAssets) * 100;
+          console.log(`Error loading ${asset.src} - Progress: ${progress}%`);
+          loadingProgressBar.style.width = `${progress}%`;
+          resolve(); // Continue loading other assets even if one fails
+        };
+
+        // For videos and audio, consider them "loaded" once metadata is available
+        if (asset.type === 'video' || asset.type === 'audio') {
+          element.onloadedmetadata = element.onload;
+        }
+
+        // If the element is already complete (e.g., cached), trigger onload manually
+        if (asset.type === 'image' && element.complete) {
+          element.onload();
+        }
+      });
+    })
+  );
+}
+
+window.onload = async () => {
+  console.log('window.onload fired');
+
+  window.debug = false;
+
+  // Show loading screen (already visible by default)
+  const loadingScreen = document.getElementById('loadingScreen');
+
+  // Ensure the loading screen is visible for at least 1 second
+  const minimumLoadTime = new Promise(resolve => setTimeout(resolve, 1000));
+
+  try {
+    // Preload all assets and wait for the minimum load time
+    await Promise.all([preloadAssets(), minimumLoadTime]);
+  } catch (error) {
+    console.error('Error preloading assets:', error);
+  }
+
+  // Hide loading screen after assets are loaded and minimum time has passed
+  loadingScreen.style.display = 'none';
 
   // Log the full URL to debug
   const currentUrl = window.location.href;
@@ -87,7 +176,10 @@ document.addEventListener('DOMContentLoaded', () => {
     highScoreHolder: telegramParams.highScoreHolder,
   };
 
-  // Check if we have the necessary parameters
+  // Check if running in a testing environment (localhost or 127.0.0.1)
+  const isTesting = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+  // Check if we have the necessary Telegram parameters
   if (!telegramParams.userId || (!telegramParams.chatId && !telegramParams.inlineId)) {
     fetch('https://goobi.vercel.app/api/log', {
       method: 'POST',
@@ -97,7 +189,25 @@ document.addEventListener('DOMContentLoaded', () => {
         telegramData: window.telegramData,
       }),
     }).catch(err => console.error('Failed to send error log:', err));
-    alert('Error: Missing Telegram context. Please start the game from Telegram.');
+
+    if (isTesting) {
+      console.warn('Missing Telegram parameters. Using default context for testing.');
+      window.telegramData.username = 'TestUser';
+      window.telegramData.highScoreHolder = 'None';
+      window.telegramData.highScore = 0;
+    } else {
+      // Show the Telegram error screen instead of an alert
+      const telegramErrorScreen = document.getElementById('telegramErrorScreen');
+      telegramErrorScreen.style.display = 'flex';
+
+      // Add click handler for the "Open in Telegram" button
+      const openInTelegramButton = document.getElementById('openInTelegramButton');
+      openInTelegramButton.addEventListener('click', () => {
+        window.location.href = 'https://t.me/goobigamebot';
+      });
+
+      return; // Stop further execution
+    }
   }
 
   // Send Telegram data to Vercel logs
@@ -151,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
       startGame(window.telegramData);
     });
   }
-});
+};
 
 /**
  * Scales the game to fit the screen
@@ -210,7 +320,7 @@ function generateShareCardDataURL() {
         drawCenteredText(ctx, 'New Personal High Score!', scoreY - 60, '60px sans-serif', 'red');
       }
       const scoreLine = `Score: ${finalScore}`;
-      drawCenteredText(ctx, scoreLine, scoreY, '160px sans-serif', 'white'); // Increased font size to 160px
+      drawCenteredText(ctx, scoreLine, scoreY, '160px sans-serif', 'white');
 
       const dataURL = canvas.toDataURL('image/png');
       resolve(dataURL);
@@ -229,7 +339,7 @@ function generateShareCardDataURL() {
         drawCenteredText(ctx, 'New Personal High Score!', scoreY - 60, '60px sans-serif', 'red');
       }
       const scoreLine = `Score: ${finalScore}`;
-      drawCenteredText(ctx, scoreLine, scoreY, '160px sans-serif', 'white'); // Increased font size to 160px
+      drawCenteredText(ctx, scoreLine, scoreY, '160px sans-serif', 'white');
 
       const dataURL = canvas.toDataURL('image/png');
       resolve(dataURL);
