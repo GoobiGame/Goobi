@@ -63,15 +63,14 @@ document.addEventListener('DOMContentLoaded', () => {
     chatId: telegramParams.chatId,
     messageId: telegramParams.messageId,
     inlineId: telegramParams.inlineId,
-    // Fallback for testing if parameters are missing
-    ...(telegramParams.userId ? {} : {
-      userId: '1841599169',
-      chatId: '1841599169',
-      messageId: '148', // Updated to the latest messageId from your logs
-      inlineId: null,
-    }),
   };
   console.log('Telegram Data:', window.telegramData);
+
+  // Check if we have the necessary parameters
+  if (!telegramParams.userId || (!telegramParams.chatId && !telegramParams.inlineId)) {
+    console.error('Missing required Telegram parameters. Cannot proceed.');
+    alert('Error: Missing Telegram context. Please start the game from Telegram.');
+  }
 
   // Start screen logic
   if (sessionStorage.getItem('skipStartScreen') === 'true') {

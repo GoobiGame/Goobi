@@ -42,8 +42,16 @@ bot.on('callback_query', async (ctx) => {
     const query = ctx.callbackQuery;
     if (query.game_short_name === GAME_SHORT_NAME) {
       console.log('User tapped "Play" for short name:', GAME_SHORT_NAME);
-      console.log('Providing game URL:', GAME_URL);
-      await ctx.answerGameQuery(GAME_URL);
+      const userId = ctx.from.id;
+      const stored = cachedGameMessage[userId];
+
+      // Construct the game URL with chatId and messageId
+      let gameUrl = GAME_URL;
+      if (stored && stored.chatId && stored.messageId) {
+        gameUrl = `${GAME_URL}?user_id=${userId}&chat_id=${stored.chatId}&message_id=${stored.messageId}`;
+      }
+      console.log('Providing game URL:', gameUrl);
+      await ctx.answerGameQuery(gameUrl);
     } else {
       await ctx.answerCallbackQuery({ text: 'Unknown game short name', show_alert: true });
     }
