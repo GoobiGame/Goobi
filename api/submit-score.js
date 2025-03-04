@@ -9,7 +9,10 @@ export default async function handler(req, res) {
   }
 
   const { userId, score, chatId, messageId, inlineId } = req.body;
+  console.log('Received score submission:', { userId, score, chatId, messageId, inlineId });
+
   if (!userId || !score) {
+    console.log('Missing userId or score');
     return res.status(400).json({ ok: false, error: 'Missing userId or score' });
   }
 
@@ -17,17 +20,21 @@ export default async function handler(req, res) {
   if (chatId && messageId) {
     options.chat_id = chatId;
     options.message_id = messageId;
-  } else if (inlineId) {
+    console.log('Using chat mode:', options);
+  } else if (inlineId && typeof inlineId === 'string') {
     options.inline_message_id = inlineId;
+    console.log('Using inline mode:', options);
   } else {
-    return res.status(400).json({ ok: false, error: 'No chat or inline context' });
+    console.log('Invalid context: no valid chat or inline ID');
+    return res.status(400).json({ ok: false, error: 'No valid chat or inline context' });
   }
 
   try {
     await bot.telegram.setGameScore(userId, score, {
       ...options,
-      edit_message: true, // This makes the score show up in the chat
+      edit_message: true,
     });
+    console.log('Score set successfully');
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('Error setting score:', err);
