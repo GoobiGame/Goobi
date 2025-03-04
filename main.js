@@ -4,7 +4,7 @@ import { AudioManager } from './audioManager.js';
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded fired');
 
-  // We remove Telegram.WebApp references. Instead, just do a normal scale on load
+  // Scale the game to fit the screen
   scaleGame();
 
   // Audio setup
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     muteButton.blur();
   });
 
-  // Prevent default gestures and context menus
+  // Prevent unwanted gestures and menus
   const canvas = document.getElementById('gameCanvas');
   if (canvas) {
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -40,10 +40,26 @@ document.addEventListener('DOMContentLoaded', () => {
     lastTouchEnd = now;
   }, { passive: false });
 
-  // We no longer detect Telegram user data. Default to "Player"
-  // If you want to store the user's name or photo, you'd do so via the Game Bot approach
-  window.telegramData = { username: 'Player' };
-  console.log('Telegram Data defaulted to Player');
+  // Get Telegram info from the URL
+  function getTelegramParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return {
+      userId: urlParams.get('user_id') || null,
+      chatId: urlParams.get('chat_id') || null,
+      messageId: urlParams.get('message_id') || null,
+      inlineId: urlParams.get('inline_message_id') || null,
+    };
+  }
+
+  const telegramParams = getTelegramParams();
+  window.telegramData = {
+    username: telegramParams.userId ? `Player_${telegramParams.userId}` : 'Player',
+    userId: telegramParams.userId,
+    chatId: telegramParams.chatId,
+    messageId: telegramParams.messageId,
+    inlineId: telegramParams.inlineId,
+  };
+  console.log('Telegram Params:', telegramParams);
 
   // Start screen logic
   if (sessionStorage.getItem('skipStartScreen') === 'true') {
@@ -77,18 +93,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Scales the #gameWrapper to fit the screen
+ * Scales the game to fit the screen
  */
 function scaleGame() {
   const gameWrapper = document.getElementById('gameWrapper');
   const gameWidth = 400;
   const gameHeight = 740;
 
-  // Just do normal viewport detection
   let viewportWidth = window.innerWidth;
   let viewportHeight = window.innerHeight;
 
-  // We remove Telegram.WebApp.viewportStableHeight references
   const scaleX = viewportWidth / gameWidth;
   const scaleY = viewportHeight / gameHeight;
   const scale = Math.min(scaleX, scaleY);
@@ -98,8 +112,9 @@ function scaleGame() {
 
 window.addEventListener('resize', scaleGame);
 
-/* share card logic remains the same if you want the scoreboard preview, etc. */
-
+/**
+ * Draws text in the center of a canvas
+ */
 function drawCenteredText(ctx, text, y, font, fillStyle) {
   ctx.font = font;
   ctx.fillStyle = fillStyle;
@@ -110,6 +125,9 @@ function drawCenteredText(ctx, text, y, font, fillStyle) {
   ctx.fillText(text, x, y);
 }
 
+/**
+ * Creates the share card image
+ */
 function generateShareCardDataURL() {
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
@@ -131,9 +149,8 @@ function generateShareCardDataURL() {
       const pfpX = (canvas.width - pfpSize) / 2;
       const pfpY = 50;
 
-      // We'll just use a fallback avatar, since we can't fetch Telegram user photo
       const pfpImg = new Image();
-      pfpImg.src = 'assets/avatarFallback.png'; 
+      pfpImg.src = 'assets/avatarFallback.png';
       pfpImg.onload = () => {
         ctx.drawImage(pfpImg, pfpX, pfpY, pfpSize, pfpSize);
         renderText();
@@ -194,23 +211,44 @@ window.updateShareCardPreview = async function() {
 };
 
 /**
- * Share button: previously we used Telegram.WebApp.sendData(...)
- * Now we can either do a "mock" share or do nothing 
+ * Sends the score to the bot to share in Telegram
  */
 async function shareScoreToChat() {
   try {
     if (!window.shareCardDataURL) {
       window.shareCardDataURL = await generateShareCardDataURL();
     }
-    const username = window.telegramData?.username || 'Player';
+    const username = window.telegramData.username || 'Player';
     const finalScore = window.finalScore ?? 0;
     const shareText = `@${username} just scored ${finalScore} in Goobi!`;
 
-    // No Telegram.WebApp. We'll just do a normal alert or console
-    console.log('Share to chat (mock):', shareText);
-    alert(`Shared to chat (mocked): ${shareText}`);
+    const { userId, chatId, messageId, inlineId } = window.telegramData;
+    if (!userId) {
+      console.log('No userId available. Running outside Telegram context.');
+      alert(`Shared to chat (mocked): ${shareText}`);
+      return;
+    }
+
+    const response = await fetch('/api/submit-score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        score: finalScore,
+        chatId,
+        messageId,
+        inlineId,
+      }),
+    });
+
+    if (response.ok) {
+      console.log('Score submitted successfully:', shareText);
+    } else {
+      console.error('Failed to submit score:', response.statusText);
+      alert('Failed to share score to chat.');
+    }
   } catch (err) {
     console.error('Share to chat failed:', err);
-    alert('Failed to share to chat (mock).');
+    alert('Failed to share to chat.');
   }
 }
