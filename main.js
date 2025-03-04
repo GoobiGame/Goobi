@@ -67,8 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ...(telegramParams.userId ? {} : {
       userId: '1841599169',
       chatId: '1841599169',
-      messageId: '140',
-      inlineId: null, // Ensure inlineId is null if not in inline mode
+      messageId: '148', // Updated to the latest messageId from your logs
+      inlineId: null,
     }),
   };
   console.log('Telegram Data:', window.telegramData);

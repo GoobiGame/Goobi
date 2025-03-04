@@ -5,6 +5,7 @@ const bot = new Telegraf(TOKEN);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
+    console.log('Method not allowed:', req.method);
     return res.status(405).send('Method Not Allowed');
   }
 
