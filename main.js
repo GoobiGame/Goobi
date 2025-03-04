@@ -4,6 +4,9 @@ import { AudioManager } from './audioManager.js';
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded fired');
 
+  // Log the full URL to debug
+  console.log('Current URL:', window.location.href);
+
   // Scale the game to fit the screen
   scaleGame();
 
@@ -43,12 +46,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Get Telegram info from the URL
   function getTelegramParams() {
     const urlParams = new URLSearchParams(window.location.search);
-    return {
+    const params = {
       userId: urlParams.get('user_id') || null,
       chatId: urlParams.get('chat_id') || null,
       messageId: urlParams.get('message_id') || null,
       inlineId: urlParams.get('inline_message_id') || null,
     };
+    console.log('Raw URL Parameters:', Object.fromEntries(urlParams));
+    return params;
   }
 
   const telegramParams = getTelegramParams();
@@ -59,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     messageId: telegramParams.messageId,
     inlineId: telegramParams.inlineId,
   };
-  console.log('Telegram Params:', telegramParams);
+  console.log('Telegram Data:', window.telegramData);
 
   // Start screen logic
   if (sessionStorage.getItem('skipStartScreen') === 'true') {
@@ -229,7 +234,8 @@ async function shareScoreToChat() {
       return;
     }
 
-    const response = await fetch('/api/submit-score', {
+    // Use the full Vercel URL for the API call
+    const response = await fetch('https://goobi.vercel.app/api/submit-score', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -243,12 +249,15 @@ async function shareScoreToChat() {
 
     if (response.ok) {
       console.log('Score submitted successfully:', shareText);
+      alert('Score shared to chat successfully!');
     } else {
       console.error('Failed to submit score:', response.statusText);
-      alert('Failed to share score to chat.');
+      const errorText = await response.text();
+      console.error('Error details:', errorText);
+      alert(`Failed to share score to chat: ${response.statusText} (${errorText})`);
     }
   } catch (err) {
     console.error('Share to chat failed:', err);
-    alert('Failed to share to chat.');
+    alert(`Failed to share to chat: ${err.message}`);
   }
 }
