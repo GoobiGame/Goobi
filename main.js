@@ -4,7 +4,7 @@ import { AudioManager } from './audioManager.js';
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded fired');
 
-  window.debug = true
+  window.debug = false
   
 
   // Log the full URL to debug
