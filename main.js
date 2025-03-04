@@ -41,10 +41,8 @@ function preloadAssets() {
           element.preload = 'metadata';
         }
 
-        // Force reload to ensure onload fires even for cached assets
         element.src = asset.src + '?t=' + new Date().getTime();
 
-        // Timeout to prevent stalling (5 seconds)
         const timeout = setTimeout(() => {
           console.warn(`Timeout loading ${asset.src} - proceeding anyway`);
           loadedAssets++;
@@ -72,7 +70,6 @@ function preloadAssets() {
           resolve();
         };
 
-        // For videos and audio, use 'onloadedmetadata' for reliability
         if (asset.type === 'video' || asset.type === 'audio') {
           element.onloadedmetadata = element.onload;
           element.onstalled = () => {
@@ -205,12 +202,14 @@ window.onload = async () => {
 
   // Asynchronously fetch Telegram context and update the game
   (async () => {
-    // Log the full URL, user agent, and referrer to debug
+    // Log the full URL, user agent, referrer, and other context to debug
     const currentUrl = window.location.href;
     const urlParams = new URLSearchParams(window.location.search);
     const paramsLog = Object.fromEntries(urlParams);
     const userAgent = navigator.userAgent;
     const referrer = document.referrer;
+    const hostname = window.location.hostname;
+    const cookies = document.cookie;
 
     // Send initial logs to Vercel
     fetch('https://goobi.vercel.app/api/log', {
@@ -222,6 +221,8 @@ window.onload = async () => {
         params: paramsLog,
         userAgent: userAgent,
         referrer: referrer,
+        hostname: hostname,
+        cookies: cookies,
       }),
     }).catch(err => console.error('Failed to send log:', err));
 
@@ -274,8 +275,14 @@ window.onload = async () => {
     // Check if running in a testing environment (localhost or 127.0.0.1)
     const isTesting = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-    // Check if we're likely in Telegram based on heuristics
-    const isLikelyInTelegram = userAgent.includes('Telegram') || referrer.includes('t.me');
+    // Enhanced heuristic for Telegram detection
+    const isLikelyInTelegram =
+      userAgent.includes('Telegram') ||
+      userAgent.includes('Mobile/15E148') || // Common iOS webview identifier
+      referrer.includes('t.me') ||
+      window.location.href.includes('t.me') ||
+      cookies.includes('tg'); // Telegram might set cookies
+
     const hasTelegramContext = telegramParams.userId || (telegramWebApp && typeof telegramWebApp === 'object') || isLikelyInTelegram;
     if (!hasTelegramContext) {
       fetch('https://goobi.vercel.app/api/log', {
@@ -288,6 +295,8 @@ window.onload = async () => {
           url: window.location.href,
           userAgent: userAgent,
           referrer: referrer,
+          hostname: hostname,
+          cookies: cookies,
         }),
       }).catch(err => console.error('Failed to send error log:', err));
 

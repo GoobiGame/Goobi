@@ -45,6 +45,10 @@ bot.on('callback_query', async (ctx) => {
       const userId = ctx.from.id;
       const stored = cachedGameMessage[userId];
 
+      // Extract chat information from the callback query
+      const chatId = query.message?.chat?.id?.toString() || query.chat_instance;
+      const messageId = query.message?.message_id?.toString();
+
       // Fetch user details (username and PFP)
       let username = 'Player';
       let photoUrl = null;
@@ -73,8 +77,12 @@ bot.on('callback_query', async (ctx) => {
           payload.message_id = stored.messageId;
         } else if (stored && stored.inlineId) {
           payload.inline_message_id = stored.inlineId;
+        } else if (chatId && messageId) {
+          // Use chatId and messageId from the callback query if stored data is missing
+          payload.chat_id = chatId;
+          payload.message_id = messageId;
         }
-        if (Object.keys(payload).length > 1) { // Ensure we have chat_id/message_id or inline_message_id
+        if (Object.keys(payload).length > 1) {
           const response = await fetch(`https://api.telegram.org/bot${TOKEN}/getGameHighScores`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -95,21 +103,22 @@ bot.on('callback_query', async (ctx) => {
         console.error('Error fetching high scores:', err);
       }
 
-      // Construct the game URL with chatId, messageId, username, photo URL, and high score
-      let gameUrl = GAME_URL;
-      if (stored && (stored.chatId || stored.inlineId)) {
-        gameUrl = `${GAME_URL}?user_id=${userId}`;
-        if (stored.chatId && stored.messageId) {
-          gameUrl += `&chat_id=${stored.chatId}&message_id=${stored.messageId}`;
-        } else if (stored.inlineId) {
-          gameUrl += `&inline_message_id=${stored.inlineId}`;
-        }
-        gameUrl += `&username=${encodeURIComponent(username)}`;
-        if (photoUrl) {
-          gameUrl += `&photo_url=${encodeURIComponent(photoUrl)}`;
-        }
-        gameUrl += `&high_score=${highScore}&high_score_holder=${encodeURIComponent(highScoreHolder || 'None')}`;
+      // Construct the game URL with userId, chatId, messageId, username, photo URL, and high score
+      let gameUrl = `${GAME_URL}?user_id=${userId}`;
+      if (chatId) {
+        gameUrl += `&chat_id=${chatId}`;
       }
+      if (messageId) {
+        gameUrl += `&message_id=${messageId}`;
+      } else if (stored && stored.inlineId) {
+        gameUrl += `&inline_message_id=${stored.inlineId}`;
+      }
+      gameUrl += `&username=${encodeURIComponent(username)}`;
+      if (photoUrl) {
+        gameUrl += `&photo_url=${encodeURIComponent(photoUrl)}`;
+      }
+      gameUrl += `&high_score=${highScore}&high_score_holder=${encodeURIComponent(highScoreHolder || 'None')}`;
+
       console.log('Providing game URL:', gameUrl);
       await ctx.answerGameQuery(gameUrl);
     } else {
