@@ -5,7 +5,20 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded fired');
 
   // Log the full URL to debug
-  console.log('Current URL:', window.location.href);
+  const currentUrl = window.location.href;
+  const urlParams = new URLSearchParams(window.location.search);
+  const paramsLog = Object.fromEntries(urlParams);
+
+  // Send logs to Vercel
+  fetch('https://goobi.vercel.app/api/log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: 'Game Loaded',
+      url: currentUrl,
+      params: paramsLog,
+    }),
+  }).catch(err => console.error('Failed to send log:', err));
 
   // Scale the game to fit the screen
   scaleGame();
@@ -52,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
       messageId: urlParams.get('message_id') || null,
       inlineId: urlParams.get('inline_message_id') || null,
     };
-    console.log('Raw URL Parameters:', Object.fromEntries(urlParams));
     return params;
   }
 
@@ -64,13 +76,29 @@ document.addEventListener('DOMContentLoaded', () => {
     messageId: telegramParams.messageId,
     inlineId: telegramParams.inlineId,
   };
-  console.log('Telegram Data:', window.telegramData);
 
   // Check if we have the necessary parameters
   if (!telegramParams.userId || (!telegramParams.chatId && !telegramParams.inlineId)) {
-    console.error('Missing required Telegram parameters. Cannot proceed.');
+    fetch('https://goobi.vercel.app/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Error: Missing Telegram Parameters',
+        telegramData: window.telegramData,
+      }),
+    }).catch(err => console.error('Failed to send error log:', err));
     alert('Error: Missing Telegram context. Please start the game from Telegram.');
   }
+
+  // Send Telegram data to Vercel logs
+  fetch('https://goobi.vercel.app/api/log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: 'Telegram Data',
+      telegramData: window.telegramData,
+    }),
+  }).catch(err => console.error('Failed to send Telegram data log:', err));
 
   // Start screen logic
   if (sessionStorage.getItem('skipStartScreen') === 'true') {
@@ -234,7 +262,21 @@ async function shareScoreToChat() {
     const shareText = `@${username} just scored ${finalScore} in Goobi!`;
 
     const { userId, chatId, messageId, inlineId } = window.telegramData;
-    console.log('Sharing score with:', { userId, chatId, messageId, inlineId });
+
+    // Log the share attempt to Vercel
+    await fetch('https://goobi.vercel.app/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Sharing Score',
+        userId,
+        chatId,
+        messageId,
+        inlineId,
+        score: finalScore,
+        shareText,
+      }),
+    });
 
     // Use the full Vercel URL for the API call
     const response = await fetch('https://goobi.vercel.app/api/submit-score', {
