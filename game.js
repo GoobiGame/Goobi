@@ -192,7 +192,7 @@ export function startGame(telegramData = {}) {
 
   requestAnimationFrame(gameLoop);
 
-  function handleGameOver() {
+  async function handleGameOver() {
     window.finalScore = score;
 
     // Update local high score
@@ -203,6 +203,21 @@ export function startGame(telegramData = {}) {
       console.log("New local high score!");
     } else {
       newHighScoreAchieved = false;
+    }
+
+    // Share the score automatically
+    try {
+      await window.shareScoreToChat();
+    } catch (err) {
+      // Log the error to Vercel but don't show it to the user
+      fetch('https://goobi.vercel.app/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Share Score Error',
+          error: err.message,
+        }),
+      }).catch(logErr => console.error('Failed to send error log:', logErr));
     }
 
     // Show game over screen

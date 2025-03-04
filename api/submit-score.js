@@ -51,6 +51,11 @@ export default async function handler(req, res) {
   
       const result = await response.json();
       if (!result.ok) {
+        // Handle BOT_SCORE_NOT_MODIFIED as a success case
+        if (result.description === 'BAD_REQUEST: BOT_SCORE_NOT_MODIFIED') {
+          console.log('Score not modified (not a new high score), treating as success');
+          return res.status(200).json({ ok: true, notModified: true });
+        }
         console.error('Telegram API error:', result);
         return res.status(500).json({ ok: false, error: result.description });
       }

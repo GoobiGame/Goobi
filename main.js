@@ -123,12 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
       startGame(window.telegramData);
     });
   }
-
-  // Share to Telegram button
-  const shareToChatButton = document.getElementById('shareToChatButton');
-  if (shareToChatButton) {
-    shareToChatButton.addEventListener('click', shareScoreToChat);
-  }
 });
 
 /**
@@ -291,17 +285,21 @@ async function shareScoreToChat() {
       }),
     });
 
-    if (response.ok) {
+    const result = await response.json();
+    if (response.ok || (result.error && result.error === 'BAD_REQUEST: BOT_SCORE_NOT_MODIFIED')) {
       console.log('Score submitted successfully:', shareText);
-      alert('Score shared to chat successfully!');
+      return true; // Indicate success
     } else {
       console.error('Failed to submit score:', response.statusText);
       const errorText = await response.text();
       console.error('Error details:', errorText);
-      alert(`Failed to share score to chat: ${response.statusText} (${errorText})`);
+      throw new Error(`Failed to share score to chat: ${response.statusText} (${errorText})`);
     }
   } catch (err) {
     console.error('Share to chat failed:', err);
-    alert(`Failed to share to chat: ${err.message}`);
+    throw err;
   }
 }
+
+// Make shareScoreToChat globally accessible
+window.shareScoreToChat = shareScoreToChat;
